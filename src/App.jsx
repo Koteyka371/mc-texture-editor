@@ -8,20 +8,20 @@ import {
   Keyboard, RotateCcw, Check
 } from 'lucide-react';
 
-// Компонент модального окна настройки горячих клавиш
+// Hotkeys modal component
 function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
   const [editingKey, setEditingKey] = useState(null);
   const inputRef = useRef(null);
 
   const hotkeyLabels = {
-    undo: 'Отменить (Undo)',
-    redo: 'Повторить (Redo)',
-    pencil: 'Карандаш',
-    picker: 'Пипетка',
-    eraser: 'Ластик',
-    marquee: 'Выделение',
-    pan: 'Панорамирование',
-    escape: 'Снять выделение'
+    undo: 'Undo',
+    redo: 'Redo',
+    pencil: 'Pencil',
+    picker: 'Color Picker',
+    eraser: 'Eraser',
+    marquee: 'Selection',
+    pan: 'Pan',
+    escape: 'Deselect'
   };
 
   const getKeyName = (key) => {
@@ -53,13 +53,13 @@ function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
     const shift = e.shiftKey;
     const alt = e.altKey;
 
-    // Esc для отмены (без модификаторов)
+    // Esc to cancel (without modifiers)
     if (key === 'Escape' && !ctrl && !shift && !alt) {
       setEditingKey(null);
       return;
     }
 
-    // Игнорируем чистые модификаторы
+    // Ignore pure modifiers
     if (['Control', 'Shift', 'Alt', 'Meta'].includes(key)) {
       return;
     }
@@ -71,11 +71,11 @@ function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
     if (alt) combo += 'alt+';
     combo += keyName.toLowerCase();
 
-    // Проверка на конфликт
+    // Check for conflicts
     const newCombo = combo.toLowerCase();
     const conflict = Object.entries(hotkeys).find(([k, v]) => k !== action && v.toLowerCase() === newCombo);
     if (conflict) {
-      alert(`Эта комбинация уже используется для "${hotkeyLabels[conflict[0]]}"`);
+      alert(`This combination is already used for "${hotkeyLabels[conflict[0]]}"`);
       return;
     }
 
@@ -84,7 +84,7 @@ function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
   };
 
   const resetToDefaults = () => {
-    if (confirm('Сбросить все горячие клавиши к значениям по умолчанию?')) {
+    if (confirm('Reset all hotkeys to default values?')) {
       setHotkeys(defaultHotkeys);
     }
   };
@@ -104,7 +104,7 @@ function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
     }).join(' + ');
   };
 
-  // Автофокус на input при начале редактирования
+  // Auto-focus on input when editing starts
   useEffect(() => {
     if (editingKey && inputRef.current) {
       inputRef.current.focus();
@@ -124,7 +124,7 @@ function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
         <div className="flex justify-between items-center p-4 border-b border-neutral-700">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <Keyboard size={20} className="text-green-500" />
-            Настройка горячих клавиш
+            Hotkeys Settings
           </h2>
           <button onClick={onClose} className="text-neutral-400 hover:text-white p-1">
             <X size={20} />
@@ -141,7 +141,7 @@ function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
                   autoFocus
                   readOnly
                   className="bg-neutral-700 text-white px-3 py-2 rounded text-xs font-mono border border-blue-500 outline-none cursor-pointer min-w-[140px] text-center"
-                  value="Нажми клавишу..."
+                  value="Press a key..."
                   onKeyDown={(e) => handleKeyDown(e, action)}
                 />
               ) : (
@@ -160,18 +160,18 @@ function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
               onClick={resetToDefaults}
               className="flex-1 py-2 bg-neutral-700 hover:bg-neutral-600 rounded text-neutral-300 text-sm flex items-center justify-center gap-2"
             >
-              <RotateCcw size={14} /> Сбросить
+              <RotateCcw size={14} /> Reset
             </button>
             <button
               onClick={onClose}
               className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white text-sm flex items-center justify-center gap-2"
             >
-              <Check size={14} /> Готово
+              <Check size={14} /> Done
             </button>
           </div>
 
           <p className="text-xs text-neutral-500 text-center">
-            Нажми на комбинацию чтобы изменить. Esc для отмены.
+            Click on a combination to change. Esc to cancel.
           </p>
         </div>
       </div>
@@ -220,6 +220,7 @@ const modifyColorBrightness = (hex, amount) => {
   if (!hex || hex === 'transparent') return 'transparent';
   const [r, g, b, a] = hexToRgba(hex);
   if (a === 0) return 'transparent';
+  // Плавный переход - уменьшаем шаг изменения
   return rgbToHex(
     Math.min(255, Math.max(0, r + amount)),
     Math.min(255, Math.max(0, g + amount)),
@@ -239,7 +240,7 @@ export default function App() {
   const createEmptyGrid = (w, h) => Array(h).fill().map(() => Array(w).fill('transparent'));
 
   const [layers, setLayers] = useState([
-    { id: 1, name: 'Слой 1', visible: true, grid: createEmptyGrid(16, 16) }
+    { id: 1, name: 'Layer 1', visible: true, grid: createEmptyGrid(16, 16) }
   ]);
   const [activeLayerId, setActiveLayerId] = useState(1);
   const [nextLayerId, setNextLayerId] = useState(2);
@@ -595,7 +596,7 @@ export default function App() {
     pushToHistory();
     const newGrid = gridData || createEmptyGrid(canvasSize.w, canvasSize.h);
     const newId = nextLayerId;
-    const newLayer = { id: newId, name: name ? String(name) : `Слой ${newId}`, visible: true, grid: newGrid };
+    const newLayer = { id: newId, name: name ? String(name) : `Layer ${newId}`, visible: true, grid: newGrid };
     setLayers([newLayer, ...layers]);
     setActiveLayerId(newId);
     setNextLayerId(prev => prev + 1);
@@ -656,7 +657,7 @@ export default function App() {
   }
 
   function deleteActiveLayer() {
-      if (layers.length <= 1) { alert("Нельзя удалить последний слой!"); return; }
+      if (layers.length <= 1) { alert("Cannot delete the last layer!"); return; }
       removeLayer(activeLayerId);
   }
 
@@ -750,12 +751,13 @@ export default function App() {
   function drawPixelWithSymmetry(startR, startC) {
       if (!activeLayer || !activeLayer.visible) return;
       let newColor = getCurrentColorHex();
+      // Плавное затемнение/осветление - шаг 10 вместо 25
       if (isShadingMode && tool === 'pencil') {
          const currentColor = activeLayer.grid[startR][startC];
-         if (currentColor !== 'transparent') newColor = modifyColorBrightness(currentColor, -25);
+         if (currentColor !== 'transparent') newColor = modifyColorBrightness(currentColor, -10);
       } else if (isLightenMode && tool === 'pencil') {
          const currentColor = activeLayer.grid[startR][startC];
-         if (currentColor !== 'transparent') newColor = modifyColorBrightness(currentColor, 25);
+         if (currentColor !== 'transparent') newColor = modifyColorBrightness(currentColor, 10);
       }
 
       const points = [[startR, startC]];
@@ -1150,10 +1152,10 @@ export default function App() {
 
   // --- Хелперы для затемнения/осветления ---
   function darkenColor(hex) {
-      return modifyColorBrightness(hex, -25);
+      return modifyColorBrightness(hex, -10);
   }
   function lightenColor(hex) {
-      return modifyColorBrightness(hex, 25);
+      return modifyColorBrightness(hex, 10);
   }
 
   // --- Оптимизированный рендеринг через Canvas ---
@@ -1367,25 +1369,25 @@ export default function App() {
            <Grid3X3 /> MC Texture Editor Pro
         </h1>
         <div className="absolute right-4 flex gap-2">
-          <button onClick={() => setShowHotkeys(!showHotkeys)} className="p-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-neutral-400 hover:text-white transition-colors" title="Горячие клавиши">
+          <button onClick={() => setShowHotkeys(!showHotkeys)} className="p-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-neutral-400 hover:text-white transition-colors" title="Hotkeys">
              <Keyboard size={18} />
           </button>
-          <button onClick={toggleFullScreen} className="p-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-neutral-400 hover:text-white transition-colors" title="На весь экран (F11 или Alt+Enter)">
+          <button onClick={toggleFullScreen} className="p-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-neutral-400 hover:text-white transition-colors" title="Fullscreen (F11 or Alt+Enter)">
              <Maximize2 size={18} />
           </button>
         </div>
       </header>
 
-      <div className="flex flex-col lg:flex-row gap-4 items-start w-full max-w-[1600px] mx-auto flex-1 overflow-hidden">
+      <div className="flex flex-col lg:flex-row gap-4 items-start w-full max-w-[1600px] mx-auto flex-1 overflow-hidden px-2 lg:px-4">
 
-        {/* ЛЕВАЯ ПАНЕЛЬ: Инструменты */}
+        {/* LEFT PANEL: Tools */}
         <div className="flex flex-col gap-3 bg-neutral-800 p-3 rounded-xl border border-neutral-700 shadow-xl w-full lg:w-64 shrink-0 overflow-y-auto custom-scrollbar" style={{maxHeight: 'calc(100vh - 100px)'}}>
 
-          {/* Цвет и прозрачность */}
+          {/* Color and Opacity */}
           <div className="flex flex-col gap-2 bg-neutral-900 p-2 rounded-lg border border-neutral-700">
              <div className="flex justify-between items-center">
-                 <span className="text-[10px] text-neutral-400 font-bold uppercase">Цвет</span>
-                 <button onClick={useGlobalEyedropper} className="p-1 bg-neutral-700 hover:bg-neutral-600 rounded text-neutral-300" title="Системная пипетка (Берет цвет отовсюду)">
+                 <span className="text-[10px] text-neutral-400 font-bold uppercase">Color</span>
+                 <button onClick={useGlobalEyedropper} className="p-1 bg-neutral-700 hover:bg-neutral-600 rounded text-neutral-300" title="System Eyedropper (Pick color from anywhere)">
                      <Monitor size={12}/>
                  </button>
              </div>
@@ -1415,31 +1417,31 @@ export default function App() {
              </div>
           </div>
 
-          {/* Инструменты */}
+          {/* Tools */}
           <div className="grid grid-cols-4 gap-1">
-            <ToolButton active={tool === 'pencil' && !isShadingMode && !isLightenMode} onClick={() => { setTool('pencil'); setIsShadingMode(false); setIsLightenMode(false); }} icon={<Pencil size={16} />} title="Карандаш [1]" />
-            <ToolButton active={tool === 'eraser'} onClick={() => { setTool('eraser'); setIsShadingMode(false); setIsLightenMode(false); }} icon={<Eraser size={16} />} title="Ластик [3]" />
-            <ToolButton active={tool === 'picker'} onClick={() => { setTool('picker'); setIsShadingMode(false); setIsLightenMode(false); }} icon={<Pipette size={16} />} title="Пипетка [2]" />
-            <ToolButton active={tool === 'bucket'} onClick={() => { setTool('bucket'); setIsShadingMode(false); setIsLightenMode(false); }} icon={<PaintBucket size={16} />} title="Заливка" />
-            <ToolButton active={tool === 'replace'} onClick={() => { setTool('replace'); }} icon={<RefreshCw size={16} />} title="Замена цвета [4]" />
-            <ToolButton active={tool === 'marquee'} onClick={() => { setTool('marquee'); }} icon={<BoxSelect size={16} />} title="Выделение [M]" />
-            <ToolButton active={tool === 'pan'} onClick={() => { setTool('pan'); }} icon={<Hand size={16} />} title="Панорамирование [H]" />
-            <button onClick={clearActiveLayer} className="p-1.5 rounded-lg flex items-center justify-center transition-all bg-red-900/30 text-red-400 hover:bg-red-900/50" title="Очистить слой">
+            <ToolButton active={tool === 'pencil' && !isShadingMode && !isLightenMode} onClick={() => { setTool('pencil'); setIsShadingMode(false); setIsLightenMode(false); }} icon={<Pencil size={16} />} title="Pencil [1]" />
+            <ToolButton active={tool === 'eraser'} onClick={() => { setTool('eraser'); setIsShadingMode(false); setIsLightenMode(false); }} icon={<Eraser size={16} />} title="Eraser [3]" />
+            <ToolButton active={tool === 'picker'} onClick={() => { setTool('picker'); setIsShadingMode(false); setIsLightenMode(false); }} icon={<Pipette size={16} />} title="Color Picker [2]" />
+            <ToolButton active={tool === 'bucket'} onClick={() => { setTool('bucket'); setIsShadingMode(false); setIsLightenMode(false); }} icon={<PaintBucket size={16} />} title="Fill Bucket" />
+            <ToolButton active={tool === 'replace'} onClick={() => { setTool('replace'); }} icon={<RefreshCw size={16} />} title="Replace Color [4]" />
+            <ToolButton active={tool === 'marquee'} onClick={() => { setTool('marquee'); }} icon={<BoxSelect size={16} />} title="Selection [M]" />
+            <ToolButton active={tool === 'pan'} onClick={() => { setTool('pan'); }} icon={<Hand size={16} />} title="Pan [H]" />
+            <button onClick={clearActiveLayer} className="p-1.5 rounded-lg flex items-center justify-center transition-all bg-red-900/30 text-red-400 hover:bg-red-900/50" title="Clear Layer">
                 <X size={16}/>
             </button>
           </div>
 
-          {/* Свет/Тень */}
+          {/* Shade/Light */}
           <div className="flex gap-1">
              <button onClick={() => { setTool('pencil'); setIsShadingMode(!isShadingMode); setIsLightenMode(false); }} className={`flex-1 py-1.5 rounded flex items-center justify-center gap-1 font-bold border text-[10px] ${isShadingMode ? 'bg-purple-600 text-white border-purple-500 shadow-md' : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:bg-neutral-700'}`}>
-                <Moon size={12} /> Тень
+                <Moon size={12} /> Shade
              </button>
              <button onClick={() => { setTool('pencil'); setIsLightenMode(!isLightenMode); setIsShadingMode(false); }} className={`flex-1 py-1.5 rounded flex items-center justify-center gap-1 font-bold border text-[10px] ${isLightenMode ? 'bg-yellow-600 text-white border-yellow-500 shadow-md' : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:bg-neutral-700'}`}>
-                <Sun size={12} /> Свет
+                <Sun size={12} /> Light
              </button>
           </div>
 
-          {/* Симметрия и Дизеринг */}
+          {/* Symmetry and Dithering */}
           <div className="flex gap-1">
              <button onClick={() => setSymX(!symX)} className={`flex-1 py-1.5 rounded text-[10px] font-bold border ${symX ? 'bg-blue-600 text-white border-blue-500' : 'bg-neutral-800 text-neutral-400 border-neutral-700'}`}>Sym X</button>
              <button onClick={() => setSymY(!symY)} className={`flex-1 py-1.5 rounded text-[10px] font-bold border ${symY ? 'bg-blue-600 text-white border-blue-500' : 'bg-neutral-800 text-neutral-400 border-neutral-700'}`}>Sym Y</button>
@@ -1448,22 +1450,22 @@ export default function App() {
 
           <div className="h-px bg-neutral-700"></div>
 
-          {/* Перемещение слоя */}
+          {/* Layer Movement */}
           <div className="flex flex-col gap-2">
-              <span className="text-[10px] text-neutral-400 font-bold uppercase">Перемещение слоя</span>
+              <span className="text-[10px] text-neutral-400 font-bold uppercase">Layer Movement</span>
               <div className="flex justify-center gap-1">
-                  <button onClick={() => shiftLayerByOne(0, -1)} className="p-1.5 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-700 flex justify-center text-neutral-300" title="Вверх (↑)">
+                  <button onClick={() => shiftLayerByOne(0, -1)} className="p-1.5 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-700 flex justify-center text-neutral-300" title="Up (↑)">
                       <ChevronUp size={16}/>
                   </button>
               </div>
               <div className="flex justify-center gap-1">
-                  <button onClick={() => shiftLayerByOne(-1, 0)} className="p-1.5 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-700 flex justify-center text-neutral-300" title="Влево (←)">
+                  <button onClick={() => shiftLayerByOne(-1, 0)} className="p-1.5 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-700 flex justify-center text-neutral-300" title="Left (←)">
                       <ChevronLeft size={16}/>
                   </button>
-                  <button onClick={() => shiftLayerByOne(0, 1)} className="p-1.5 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-700 flex justify-center text-neutral-300" title="Вниз (↓)">
+                  <button onClick={() => shiftLayerByOne(0, 1)} className="p-1.5 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-700 flex justify-center text-neutral-300" title="Down (↓)">
                       <ChevronDown size={16}/>
                   </button>
-                  <button onClick={() => shiftLayerByOne(1, 0)} className="p-1.5 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-700 flex justify-center text-neutral-300" title="Вправо (→)">
+                  <button onClick={() => shiftLayerByOne(1, 0)} className="p-1.5 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-700 flex justify-center text-neutral-300" title="Right (→)">
                       <ChevronRight size={16}/>
                   </button>
               </div>
@@ -1471,26 +1473,26 @@ export default function App() {
 
           <div className="h-px bg-neutral-700"></div>
 
-          {/* Трансформации */}
+          {/* Transformations */}
           <div className="flex flex-col gap-2">
-              <span className="text-[10px] text-neutral-400 font-bold uppercase">Трансформация (к слою/выделению)</span>
+              <span className="text-[10px] text-neutral-400 font-bold uppercase">Transform (Layer/Selection)</span>
 
               <div className="flex gap-1">
-                  <button onClick={() => applyTransform('flipH')} className="flex-1 p-1 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-700 flex justify-center text-neutral-300" title="Отразить по горизонтали"><FlipHorizontal size={14}/></button>
-                  <button onClick={() => applyTransform('flipV')} className="flex-1 p-1 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-700 flex justify-center text-neutral-300" title="Отразить по вертикали"><FlipVertical size={14}/></button>
-                  <button onClick={() => applyTransform('rot90')} className="flex-1 p-1 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-700 flex justify-center text-neutral-300" title="Повернуть на 90°"><RotateCw size={14}/></button>
+                  <button onClick={() => applyTransform('flipH')} className="flex-1 p-1 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-700 flex justify-center text-neutral-300" title="Flip Horizontal"><FlipHorizontal size={14}/></button>
+                  <button onClick={() => applyTransform('flipV')} className="flex-1 p-1 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-700 flex justify-center text-neutral-300" title="Flip Vertical"><FlipVertical size={14}/></button>
+                  <button onClick={() => applyTransform('rot90')} className="flex-1 p-1 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-700 flex justify-center text-neutral-300" title="Rotate 90°"><RotateCw size={14}/></button>
               </div>
 
               <div className="flex gap-1 items-center bg-neutral-900 p-1.5 rounded border border-neutral-700">
-                  <input type="number" value={rotationAngle} onChange={e=>setRotationAngle(e.target.value)} className="w-12 bg-neutral-800 text-xs text-center rounded px-1 py-0.5 outline-none border border-neutral-600" placeholder="Угол"/>
+                  <input type="number" value={rotationAngle} onChange={e=>setRotationAngle(e.target.value)} className="w-12 bg-neutral-800 text-xs text-center rounded px-1 py-0.5 outline-none border border-neutral-600" placeholder="Angle"/>
                   <span className="text-[10px] text-neutral-500">°</span>
-                  <button onClick={applySmoothRotation} className="flex-1 bg-neutral-700 hover:bg-neutral-600 text-[10px] py-1 rounded text-white font-bold">Применить</button>
+                  <button onClick={applySmoothRotation} className="flex-1 bg-neutral-700 hover:bg-neutral-600 text-[10px] py-1 rounded text-white font-bold">Apply</button>
               </div>
           </div>
 
           <div className="h-px bg-neutral-700"></div>
 
-           {/* Размер холста */}
+           {/* Canvas Size */}
            <div className="flex flex-col gap-1">
              <div className="flex gap-1 items-center">
                  <input type="number" value={inputSize.w} onChange={(e) => setInputSize(p => ({ ...p, w: e.target.value }))} className="w-full bg-neutral-900 border border-neutral-700 rounded p-1 text-[10px] text-center text-white" />
@@ -1510,7 +1512,7 @@ export default function App() {
             </div>
             <div className="grid grid-cols-2 gap-1">
                 <label className="flex items-center justify-center gap-2 w-full bg-neutral-700 hover:bg-neutral-600 text-white font-bold py-2 rounded transition-colors text-sm cursor-pointer">
-                    <FolderOpen size={16} /> Импорт
+                    <FolderOpen size={16} /> Import
                     <input type="file" accept="image/*" className="hidden" onChange={handleTextureUpload} />
                 </label>
                 <button onClick={handleDownload} className="flex items-center justify-center gap-2 w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded transition-colors shadow-lg shadow-green-900/20 text-sm">
@@ -1523,11 +1525,11 @@ export default function App() {
         {/* ЦЕНТР: Холст */}
         <div className="flex flex-col items-center gap-2 flex-1 h-full overflow-hidden">
 
-          {/* Верхняя панель над холстом */}
+          {/* Top panel above canvas */}
           <div className="flex items-center justify-between w-full bg-neutral-800 p-2 rounded-xl border border-neutral-700 shadow-md">
              <div className="flex items-center gap-2">
-                 <button onClick={() => setShowGrid(!showGrid)} className={`p-1.5 rounded flex items-center justify-center gap-2 text-xs ${showGrid ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:bg-neutral-700'}`}><Grid3X3 size={14} /> Сетка</button>
-                 <button onClick={togglePaletteMode} className={`p-1.5 rounded flex items-center justify-center gap-2 text-xs ${isPaletteMode ? 'bg-blue-600 text-white' : 'text-neutral-400 hover:bg-neutral-700'}`}><Hash size={14} /> Индексы</button>
+                 <button onClick={() => setShowGrid(!showGrid)} className={`p-1.5 rounded flex items-center justify-center gap-2 text-xs ${showGrid ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:bg-neutral-700'}`}><Grid3X3 size={14} /> Grid</button>
+                 <button onClick={togglePaletteMode} className={`p-1.5 rounded flex items-center justify-center gap-2 text-xs ${isPaletteMode ? 'bg-blue-600 text-white' : 'text-neutral-400 hover:bg-neutral-700'}`}><Hash size={14} /> Indices</button>
              </div>
              <div className="flex items-center gap-2 bg-neutral-900 p-1 rounded-lg border border-neutral-700">
                 <button onClick={() => setZoom(z => Math.max(2, z - 2))} className="p-1 text-neutral-400 hover:text-white"><ZoomOut size={14} /></button>
@@ -1542,7 +1544,7 @@ export default function App() {
              onWheel={handleWheelCanvas}
              style={{ touchAction: 'none' }}
           >
-             {/* Затемненный фон 3D кубиков */}
+             {/* Затемненный фо�� 3D кубиков */}
              <div className="absolute inset-0 pointer-events-none opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
 
              <div
@@ -1581,13 +1583,13 @@ export default function App() {
 
         </div>
 
-        {/* ПРАВАЯ КОЛОНКА */}
+        {/* RIGHT COLUMN */}
         <div className="flex flex-col gap-3 w-full lg:w-72 shrink-0 overflow-y-auto custom-scrollbar" style={{maxHeight: 'calc(100vh - 100px)'}}>
 
-            {/* Анимация */}
+            {/* Animation */}
             <div className="bg-neutral-800 p-3 rounded-xl border border-neutral-700 flex flex-col gap-2">
                  <div className="flex justify-between items-center pb-2 border-b border-neutral-700">
-                    <h3 className="font-bold text-neutral-300 flex items-center gap-2 text-xs uppercase"><Play size={14}/> Анимация (Слои)</h3>
+                    <h3 className="font-bold text-neutral-300 flex items-center gap-2 text-xs uppercase"><Play size={14}/> Animation (Layers)</h3>
                     <button onClick={() => setAnimPlaying(!animPlaying)} className={`p-1 rounded ${animPlaying ? 'bg-red-600' : 'bg-green-600'} text-white`}>
                         {animPlaying ? <Pause size={12}/> : <Play size={12}/>}
                     </button>
@@ -1609,7 +1611,7 @@ export default function App() {
                              )}
                          </div>
                          <div className="flex items-center gap-2 w-full">
-                             <span className="text-[10px] text-neutral-500">Скорость:</span>
+                             <span className="text-[10px] text-neutral-500">Speed:</span>
                              <input type="range" min="1" max="24" value={animFps} onChange={e=>setAnimFps(e.target.value)} className="flex-1 h-1"/>
                              <span className="text-[10px] text-neutral-400">{String(animFps)} fps</span>
                          </div>
@@ -1617,14 +1619,14 @@ export default function App() {
                  )}
             </div>
 
-            {/* Слои */}
+            {/* Layers */}
             <div className="bg-neutral-800 p-3 rounded-xl border border-neutral-700 flex flex-col gap-2">
                 <div className="flex justify-between items-center pb-2 border-b border-neutral-700">
                     <h3 className="font-bold text-neutral-300 flex items-center gap-2 text-xs uppercase">
-                        <Layers size={14} /> Слои
+                        <Layers size={14} /> Layers
                     </h3>
                     <div className="flex gap-1">
-                        <button onClick={() => addLayer()} title="Новый слой" className="p-1 bg-neutral-700 hover:bg-neutral-600 rounded text-neutral-300"><Plus size={14} /></button>
+                        <button onClick={() => addLayer()} title="New layer" className="p-1 bg-neutral-700 hover:bg-neutral-600 rounded text-neutral-300"><Plus size={14} /></button>
                     </div>
                 </div>
 
@@ -1647,12 +1649,12 @@ export default function App() {
                 </div>
             </div>
 
-            {/* СПИСОК ПАЛИТРЫ */}
+            {/* PALETTE LIST */}
             {isPaletteMode && (
                 <div className="bg-neutral-800 p-3 rounded-xl border border-blue-700/50 shadow-lg shadow-blue-900/20 flex flex-col gap-2">
                      <div className="flex justify-between items-center pb-2 border-b border-neutral-700">
-                        <h3 className="font-bold text-blue-300 flex items-center gap-2 text-xs uppercase"><Hash size={14} /> Палитра</h3>
-                        <button onClick={saveCurrentPalette} className="text-[10px] flex items-center gap-1 bg-blue-900/50 hover:bg-blue-800 text-blue-200 px-2 py-1 rounded"><Save size={10}/> Сохранить</button>
+                        <h3 className="font-bold text-blue-300 flex items-center gap-2 text-xs uppercase"><Hash size={14} /> Palette</h3>
+                        <button onClick={saveCurrentPalette} className="text-[10px] flex items-center gap-1 bg-blue-900/50 hover:bg-blue-800 text-blue-200 px-2 py-1 rounded"><Save size={10}/> Save</button>
                      </div>
 
                      {savedPalettes.length > 0 && (
@@ -1676,17 +1678,17 @@ export default function App() {
                 </div>
             )}
 
-            {/* Референс */}
+            {/* Reference */}
             {!isPaletteMode && (
                 <div className="bg-neutral-800 p-3 rounded-xl border border-neutral-700 h-fit">
                     <div className="flex justify-between items-center mb-2">
-                        <h3 className="font-bold text-neutral-300 flex items-center gap-2 text-xs uppercase"><ImageIcon size={14} /> Рефере��с</h3>
-                        {referenceImage && <button onClick={() => setReferenceImage(null)} className="text-[10px] text-red-400">Удалить</button>}
+                        <h3 className="font-bold text-neutral-300 flex items-center gap-2 text-xs uppercase"><ImageIcon size={14} /> Reference</h3>
+                        {referenceImage && <button onClick={() => setReferenceImage(null)} className="text-[10px] text-red-400">Delete</button>}
                     </div>
                     {!referenceImage ? (
                         <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-neutral-600 rounded-lg cursor-pointer hover:bg-neutral-700/50 transition-colors">
                             <Upload className="text-neutral-500 mb-1" size={16} />
-                            <span className="text-[10px] text-neutral-400 text-center px-2">Загрузить картинку</span>
+                            <span className="text-[10px] text-neutral-400 text-center px-2">Upload image</span>
                             <input type="file" accept="image/*" className="hidden" onChange={handleReferenceUpload} />
                         </label>
                     ) : (
@@ -1702,7 +1704,7 @@ export default function App() {
 
       </div>
 
-      {/* Модальное окно с горячими клавишами */}
+      {/* Hotkeys modal */}
       {showHotkeys && (
         <HotkeysModal hotkeys={hotkeys} setHotkeys={setHotkeys} defaultHotkeys={defaultHotkeys} onClose={() => setShowHotkeys(false)} />
       )}
