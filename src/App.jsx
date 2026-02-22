@@ -288,13 +288,13 @@ export default function App() {
   const [rotationAngle, setRotationAngle] = useState(0);
   const [showHotkeys, setShowHotkeys] = useState(false);
 
-  // --- Горячие клавиши (с настройкой пользователя) ---
+  // --- Hotkeys (with user settings) ---
   const defaultHotkeys = {
     undo: 'ctrl+z',
     redo: 'ctrl+shift+z',
     pencil: '1',
-    picker: '2',
-    eraser: '3',
+    picker: '3',
+    eraser: '2',
     replace: '4',
     marquee: 'm',
     pan: 'h',
@@ -659,6 +659,32 @@ export default function App() {
   function deleteActiveLayer() {
       if (layers.length <= 1) { alert("Cannot delete the last layer!"); return; }
       removeLayer(activeLayerId);
+  }
+
+  function mergeDown() {
+      if (activeLayerIndex >= layers.length - 1) {
+          alert("Cannot merge - this is the bottom layer!");
+          return;
+      }
+      pushToHistory();
+      const currentLayer = layers[activeLayerIndex];
+      const layerBelow = layers[activeLayerIndex + 1];
+      
+      const newGrid = currentLayer.grid.map((row, r) => 
+          row.map((pixel, c) => {
+              // If current pixel is transparent, use pixel from layer below
+              if (pixel === 'transparent' || pixel === undefined) {
+                  return layerBelow.grid[r][c];
+              }
+              return pixel;
+          })
+      );
+      
+      const newLayers = layers.filter(l => l.id !== layerBelow.id);
+      const newCurrentLayer = { ...currentLayer, grid: newGrid };
+      newLayers[activeLayerIndex] = newCurrentLayer;
+      
+      setLayers(newLayers);
   }
 
   // --- Размер и Зум ---
@@ -1420,8 +1446,8 @@ export default function App() {
           {/* Tools */}
           <div className="grid grid-cols-4 gap-1">
             <ToolButton active={tool === 'pencil' && !isShadingMode && !isLightenMode} onClick={() => { setTool('pencil'); setIsShadingMode(false); setIsLightenMode(false); }} icon={<Pencil size={16} />} title="Pencil [1]" />
-            <ToolButton active={tool === 'eraser'} onClick={() => { setTool('eraser'); setIsShadingMode(false); setIsLightenMode(false); }} icon={<Eraser size={16} />} title="Eraser [3]" />
-            <ToolButton active={tool === 'picker'} onClick={() => { setTool('picker'); setIsShadingMode(false); setIsLightenMode(false); }} icon={<Pipette size={16} />} title="Color Picker [2]" />
+            <ToolButton active={tool === 'eraser'} onClick={() => { setTool('eraser'); setIsShadingMode(false); setIsLightenMode(false); }} icon={<Eraser size={16} />} title="Eraser [2]" />
+            <ToolButton active={tool === 'picker'} onClick={() => { setTool('picker'); setIsShadingMode(false); setIsLightenMode(false); }} icon={<Pipette size={16} />} title="Color Picker [3]" />
             <ToolButton active={tool === 'bucket'} onClick={() => { setTool('bucket'); setIsShadingMode(false); setIsLightenMode(false); }} icon={<PaintBucket size={16} />} title="Fill Bucket" />
             <ToolButton active={tool === 'replace'} onClick={() => { setTool('replace'); }} icon={<RefreshCw size={16} />} title="Replace Color [4]" />
             <ToolButton active={tool === 'marquee'} onClick={() => { setTool('marquee'); }} icon={<BoxSelect size={16} />} title="Selection [M]" />
@@ -1627,6 +1653,7 @@ export default function App() {
                     </h3>
                     <div className="flex gap-1">
                         <button onClick={() => addLayer()} title="New layer" className="p-1 bg-neutral-700 hover:bg-neutral-600 rounded text-neutral-300"><Plus size={14} /></button>
+                        <button onClick={mergeDown} title="Merge down" className="p-1 bg-neutral-700 hover:bg-neutral-600 rounded text-neutral-300"><Layers size={14} /></button>
                     </div>
                 </div>
 
