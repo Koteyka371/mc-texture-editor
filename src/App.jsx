@@ -228,7 +228,7 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     return () => { window.removeEventListener('keydown', handleKeyDown); window.removeEventListener('keyup', handleKeyUp); };
-  }, [layers, history, redoHistory, activeLayerId]);
+  }, [layers, history, redoHistory, activeLayerId, handleUndo, handleRedo]);
 
   // --- Колесико мыши (Зум) ---
   const handleWheelCanvas = (e) => {
