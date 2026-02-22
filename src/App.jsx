@@ -24,23 +24,91 @@ function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
     escape: 'Снять выделение'
   };
 
+  const getKeyName = (e) => {
+    // Обработка кнопок мыши
+    if (e.type === 'mousedown' || e.type === 'mouseup') {
+      if (e.button === 0) return 'LeftClick';
+      if (e.button === 1) return 'MiddleClick';
+      if (e.button === 2) return 'RightClick';
+      if (e.button === 3) return 'MouseBack';
+      if (e.button === 4) return 'MouseForward';
+    }
+    
+    // Специальные клавиши
+    const specialKeys = {
+      ' ': 'Space',
+      'ArrowUp': '↑',
+      'ArrowDown': '↓',
+      'ArrowLeft': '←',
+      'ArrowRight': '→',
+      'Escape': 'Esc',
+      'Enter': 'Enter',
+      'Tab': 'Tab',
+      'Backspace': 'Backspace',
+      'Delete': 'Delete',
+      'Home': 'Home',
+      'End': 'End',
+      'PageUp': 'PageUp',
+      'PageDown': 'PageDown',
+      'F1': 'F1', 'F2': 'F2', 'F3': 'F3', 'F4': 'F4',
+      'F5': 'F5', 'F6': 'F6', 'F7': 'F7', 'F8': 'F8',
+      'F9': 'F9', 'F10': 'F10', 'F11': 'F11', 'F12': 'F12'
+    };
+    
+    return specialKeys[e.code] || e.key.toLowerCase();
+  };
+
   const handleKeyDown = (e, action) => {
     e.preventDefault();
-    const key = e.key;
+    e.stopPropagation();
+    
+    const key = getKeyName(e);
     const ctrl = e.ctrlKey || e.metaKey;
     const shift = e.shiftKey;
     const alt = e.altKey;
 
-    if (key === 'Escape') {
+    if (key === 'Esc' && !ctrl && !shift && !alt) {
       setEditingKey(null);
       return;
     }
 
+    // Игнорируем чистые модификаторы
+    if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) {
+      return;
+    }
+
     let combo = '';
-    if (ctrl) combo += 'Ctrl+';
-    if (shift) combo += 'Shift+';
-    if (alt) combo += 'Alt+';
+    if (ctrl) combo += 'ctrl+';
+    if (shift) combo += 'shift+';
+    if (alt) combo += 'alt+';
     combo += key.toLowerCase();
+
+    // Проверка на конфликт
+    const newCombo = combo.toLowerCase();
+    const conflict = Object.entries(hotkeys).find(([k, v]) => k !== action && v.toLowerCase() === newCombo);
+    if (conflict) {
+      alert(`Эта комбинация уже используется для "${hotkeyLabels[conflict[0]]}"`);
+      return;
+    }
+
+    setHotkeys(prev => ({ ...prev, [action]: combo.toLowerCase() }));
+    setEditingKey(null);
+  };
+
+  const handleMouseDown = (e, action) => {
+    if (editingKey !== action) return;
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const ctrl = e.ctrlKey || e.metaKey;
+    const shift = e.shiftKey;
+    const alt = e.altKey;
+    
+    let combo = '';
+    if (ctrl) combo += 'ctrl+';
+    if (shift) combo += 'shift+';
+    if (alt) combo += 'alt+';
+    combo += getKeyName(e).toLowerCase();
 
     // Проверка на конфликт
     const newCombo = combo.toLowerCase();
@@ -66,7 +134,13 @@ function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
       if (part === 'ctrl') return 'Ctrl';
       if (part === 'shift') return 'Shift';
       if (part === 'alt') return 'Alt';
-      return part.toUpperCase();
+      const key = part.toUpperCase();
+      // Красивое отображение стрелок
+      if (key === 'ARROWUP') return '↑';
+      if (key === 'ARROWDOWN') return '↓';
+      if (key === 'ARROWLEFT') return '←';
+      if (key === 'ARROWRIGHT') return '→';
+      return key;
     }).join(' + ');
   };
 
@@ -82,30 +156,32 @@ function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
             <X size={20} />
           </button>
         </div>
-        
+
         <div className="p-4 space-y-3">
           {Object.entries(hotkeyLabels).map(([action, label]) => (
             <div key={action} className="flex justify-between items-center py-2 border-b border-neutral-700">
               <span className="text-neutral-300">{label}</span>
               {editingKey === action ? (
-                <input
+                <div
+                  tabIndex={0}
                   autoFocus
-                  className="bg-neutral-700 text-white px-2 py-1 rounded text-xs font-mono border border-blue-500 outline-none"
-                  value={tempKey}
-                  readOnly
+                  className="bg-neutral-700 text-white px-2 py-1 rounded text-xs font-mono border border-blue-500 outline-none cursor-pointer min-w-[120px] text-center"
                   onKeyDown={(e) => handleKeyDown(e, action)}
-                />
+                  onMouseDown={(e) => handleMouseDown(e, action)}
+                >
+                  Нажми клавишу...
+                </div>
               ) : (
                 <button
                   onClick={() => { setEditingKey(action); setTempKey(''); }}
-                  className="bg-neutral-700 hover:bg-neutral-600 px-2 py-1 rounded text-xs text-white font-mono"
+                  className="bg-neutral-700 hover:bg-neutral-600 px-2 py-1 rounded text-xs text-white font-mono min-w-[120px]"
                 >
                   {formatKeyCombo(hotkeys[action])}
                 </button>
               )}
             </div>
           ))}
-          
+
           <div className="pt-4 flex gap-2">
             <button
               onClick={resetToDefaults}
@@ -241,7 +317,7 @@ export default function App() {
   // --- Горячие клавиши (с настройкой пользователя) ---
   const defaultHotkeys = {
     undo: 'ctrl+z',
-    redo: 'ctrl+y',
+    redo: 'ctrl+shift+z',
     pencil: '1',
     picker: '2',
     eraser: '3',
@@ -320,22 +396,65 @@ export default function App() {
 
   // --- Проверка соответствия клавиши ---
   const isKeyMatch = (e, keyCombo) => {
-    const key = e.key.toLowerCase();
-    const ctrl = e.ctrlKey || e.metaKey;
-    const shift = e.shiftKey;
-    const alt = e.altKey;
+    const combo = keyCombo.toLowerCase();
+    const parts = combo.split('+');
     
-    const parts = keyCombo.toLowerCase().split('+');
     const needCtrl = parts.includes('ctrl');
     const needShift = parts.includes('shift');
     const needAlt = parts.includes('alt');
     const needKey = parts[parts.length - 1];
     
+    const ctrl = e.ctrlKey || e.metaKey;
+    const shift = e.shiftKey;
+    const alt = e.altKey;
+    
+    // Проверка модификаторов
     if (needCtrl !== ctrl) return false;
     if (needShift !== shift) return false;
     if (needAlt !== alt) return false;
     
-    return key === needKey;
+    // Получаем имя клавиши
+    let keyName = e.key.toLowerCase();
+    
+    // Специальные случаи
+    if (e.code === 'Space' && e.key === ' ') keyName = 'space';
+    if (e.key === 'ArrowUp') keyName = 'arrowup';
+    if (e.key === 'ArrowDown') keyName = 'arrowdown';
+    if (e.key === 'ArrowLeft') keyName = 'arrowleft';
+    if (e.key === 'ArrowRight') keyName = 'arrowright';
+    if (e.key === 'Escape') keyName = 'escape';
+    
+    return keyName === needKey;
+  };
+
+  // --- Проверка кнопок мыши ---
+  const isMouseMatch = (e, keyCombo) => {
+    const combo = keyCombo.toLowerCase();
+    const parts = combo.split('+');
+    
+    const needCtrl = parts.includes('ctrl');
+    const needShift = parts.includes('shift');
+    const needAlt = parts.includes('alt');
+    const needKey = parts[parts.length - 1];
+    
+    const ctrl = e.ctrlKey || e.metaKey;
+    const shift = e.shiftKey;
+    const alt = e.altKey;
+    
+    // Проверка модификаторов
+    if (needCtrl !== ctrl) return false;
+    if (needShift !== shift) return false;
+    if (needAlt !== alt) return false;
+    
+    // Получаем кнопку мыши
+    let mouseButton = '';
+    if (e.button === 0) mouseButton = 'leftclick';
+    if (e.button === 1) mouseButton = 'middleclick';
+    if (e.button === 2) mouseButton = 'rightclick';
+    if (e.button === 3) mouseButton = 'mouseback';
+    if (e.button === 4) mouseButton = 'mouseforward';
+    
+    return mouseButton === needKey;
   };
 
   // --- Горячие клавиши ---
@@ -390,9 +509,28 @@ export default function App() {
             setTool('pencil');
         }
     }
+    
+    function handleMouseDown(e) {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        
+        // Проверка горячих клавиш мыши
+        if (isMouseMatch(e, hotkeys.undo)) { e.preventDefault(); handleUndo(); return; }
+        if (isMouseMatch(e, hotkeys.redo)) { e.preventDefault(); handleRedo(); return; }
+        if (isMouseMatch(e, hotkeys.pencil)) { setTool('pencil'); setIsShadingMode(false); setIsLightenMode(false); return; }
+        if (isMouseMatch(e, hotkeys.picker)) { setTool('picker'); return; }
+        if (isMouseMatch(e, hotkeys.eraser)) { setTool('eraser'); setIsShadingMode(false); setIsLightenMode(false); return; }
+        if (isMouseMatch(e, hotkeys.marquee)) { setTool('marquee'); return; }
+        if (isMouseMatch(e, hotkeys.pan)) { setTool('pan'); return; }
+    }
+    
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
-    return () => { window.removeEventListener('keydown', handleKeyDown); window.removeEventListener('keyup', handleKeyUp); };
+    window.addEventListener('mousedown', handleMouseDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('mousedown', handleMouseDown);
+    };
   }, [layers, history, redoHistory, activeLayerId, handleUndo, handleRedo, hotkeys]);
 
   // --- Колесико мыши (Зум) ---
