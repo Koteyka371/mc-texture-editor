@@ -11,7 +11,6 @@ import {
 // Компонент модального окна настройки горячих клавиш
 function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
   const [editingKey, setEditingKey] = useState(null);
-  const [tempKey, setTempKey] = useState('');
 
   const hotkeyLabels = {
     undo: 'Отменить (Undo)',
@@ -25,15 +24,6 @@ function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
   };
 
   const getKeyName = (e) => {
-    // Обработка кнопок мыши
-    if (e.type === 'mousedown' || e.type === 'mouseup') {
-      if (e.button === 0) return 'LeftClick';
-      if (e.button === 1) return 'MiddleClick';
-      if (e.button === 2) return 'RightClick';
-      if (e.button === 3) return 'MouseBack';
-      if (e.button === 4) return 'MouseForward';
-    }
-    
     // Специальные клавиши
     const specialKeys = {
       ' ': 'Space',
@@ -54,61 +44,36 @@ function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
       'F5': 'F5', 'F6': 'F6', 'F7': 'F7', 'F8': 'F8',
       'F9': 'F9', 'F10': 'F10', 'F11': 'F11', 'F12': 'F12'
     };
-    
-    return specialKeys[e.code] || e.key.toLowerCase();
+
+    return specialKeys[e.key] || e.key.toLowerCase();
   };
 
   const handleKeyDown = (e, action) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    const key = getKeyName(e);
+
+    const key = e.key;
     const ctrl = e.ctrlKey || e.metaKey;
     const shift = e.shiftKey;
     const alt = e.altKey;
 
-    if (key === 'Esc' && !ctrl && !shift && !alt) {
+    // Esc для отмены (без модификаторов)
+    if (key === 'Escape' && !ctrl && !shift && !alt) {
       setEditingKey(null);
       return;
     }
 
     // Игнорируем чистые модификаторы
-    if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) {
+    if (['Control', 'Shift', 'Alt', 'Meta'].includes(key)) {
       return;
     }
 
+    const keyName = getKeyName(e);
     let combo = '';
     if (ctrl) combo += 'ctrl+';
     if (shift) combo += 'shift+';
     if (alt) combo += 'alt+';
-    combo += key.toLowerCase();
-
-    // Проверка на конфликт
-    const newCombo = combo.toLowerCase();
-    const conflict = Object.entries(hotkeys).find(([k, v]) => k !== action && v.toLowerCase() === newCombo);
-    if (conflict) {
-      alert(`Эта комбинация уже используется для "${hotkeyLabels[conflict[0]]}"`);
-      return;
-    }
-
-    setHotkeys(prev => ({ ...prev, [action]: combo.toLowerCase() }));
-    setEditingKey(null);
-  };
-
-  const handleMouseDown = (e, action) => {
-    if (editingKey !== action) return;
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const ctrl = e.ctrlKey || e.metaKey;
-    const shift = e.shiftKey;
-    const alt = e.altKey;
-    
-    let combo = '';
-    if (ctrl) combo += 'ctrl+';
-    if (shift) combo += 'shift+';
-    if (alt) combo += 'alt+';
-    combo += getKeyName(e).toLowerCase();
+    combo += keyName.toLowerCase();
 
     // Проверка на конфликт
     const newCombo = combo.toLowerCase();
@@ -144,9 +109,17 @@ function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
     }).join(' + ');
   };
 
+  // Предотвращаем закрытие модалки при клике внутри
+  const handleModalClick = (e) => {
+    e.stopPropagation();
+  };
+
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-neutral-800 rounded-xl border border-neutral-700 shadow-2xl max-w-md w-full max-h-[80vh] overflow-y-auto custom-scrollbar" onClick={e => e.stopPropagation()}>
+      <div 
+        className="bg-neutral-800 rounded-xl border border-neutral-700 shadow-2xl max-w-md w-full max-h-[80vh] overflow-y-auto custom-scrollbar" 
+        onClick={handleModalClick}
+      >
         <div className="flex justify-between items-center p-4 border-b border-neutral-700">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <Keyboard size={20} className="text-green-500" />
@@ -165,15 +138,14 @@ function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
                 <div
                   tabIndex={0}
                   autoFocus
-                  className="bg-neutral-700 text-white px-2 py-1 rounded text-xs font-mono border border-blue-500 outline-none cursor-pointer min-w-[120px] text-center"
+                  className="bg-neutral-700 text-white px-3 py-2 rounded text-xs font-mono border border-blue-500 outline-none cursor-pointer min-w-[140px] text-center"
                   onKeyDown={(e) => handleKeyDown(e, action)}
-                  onMouseDown={(e) => handleMouseDown(e, action)}
                 >
                   Нажми клавишу...
                 </div>
               ) : (
                 <button
-                  onClick={() => { setEditingKey(action); setTempKey(''); }}
+                  onClick={() => setEditingKey(action)}
                   className="bg-neutral-700 hover:bg-neutral-600 px-2 py-1 rounded text-xs text-white font-mono min-w-[120px]"
                 >
                   {formatKeyCombo(hotkeys[action])}
@@ -196,9 +168,9 @@ function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
               <Check size={14} /> Готово
             </button>
           </div>
-          
+
           <p className="text-xs text-neutral-500 text-center">
-            Нажмите на комбинацию чтобы изменить. Нажмите Escape для отмены.
+            Нажми на комбинацию чтобы изменить. Esc для отмены.
           </p>
         </div>
       </div>
