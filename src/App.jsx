@@ -5,8 +5,130 @@ import {
   Eye, EyeOff, X, Move, ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
   RefreshCw, Maximize, Minimize, Hash, ZoomIn, ZoomOut, Hand, BoxSelect,
   FlipHorizontal, FlipVertical, RotateCw, Save, FolderOpen, Play, Pause, Monitor, Maximize2,
-  Keyboard
+  Keyboard, RotateCcw, Check
 } from 'lucide-react';
+
+// Компонент модального окна настройки горячих клавиш
+function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
+  const [editingKey, setEditingKey] = useState(null);
+  const [tempKey, setTempKey] = useState('');
+
+  const hotkeyLabels = {
+    undo: 'Отменить (Undo)',
+    redo: 'Повторить (Redo)',
+    pencil: 'Карандаш',
+    picker: 'Пипетка',
+    eraser: 'Ластик',
+    marquee: 'Выделение',
+    pan: 'Панорамирование',
+    escape: 'Снять выделение'
+  };
+
+  const handleKeyDown = (e, action) => {
+    e.preventDefault();
+    const key = e.key;
+    const ctrl = e.ctrlKey || e.metaKey;
+    const shift = e.shiftKey;
+    const alt = e.altKey;
+
+    if (key === 'Escape') {
+      setEditingKey(null);
+      return;
+    }
+
+    let combo = '';
+    if (ctrl) combo += 'Ctrl+';
+    if (shift) combo += 'Shift+';
+    if (alt) combo += 'Alt+';
+    combo += key.toLowerCase();
+
+    // Проверка на конфликт
+    const newCombo = combo.toLowerCase();
+    const conflict = Object.entries(hotkeys).find(([k, v]) => k !== action && v.toLowerCase() === newCombo);
+    if (conflict) {
+      alert(`Эта комбинация уже используется для "${hotkeyLabels[conflict[0]]}"`);
+      return;
+    }
+
+    setHotkeys(prev => ({ ...prev, [action]: combo.toLowerCase() }));
+    setEditingKey(null);
+  };
+
+  const resetToDefaults = () => {
+    if (confirm('Сбросить все горячие клавиши к значениям по умолчанию?')) {
+      setHotkeys(defaultHotkeys);
+    }
+  };
+
+  const formatKeyCombo = (combo) => {
+    if (!combo) return '';
+    return combo.split('+').map(part => {
+      if (part === 'ctrl') return 'Ctrl';
+      if (part === 'shift') return 'Shift';
+      if (part === 'alt') return 'Alt';
+      return part.toUpperCase();
+    }).join(' + ');
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-neutral-800 rounded-xl border border-neutral-700 shadow-2xl max-w-md w-full max-h-[80vh] overflow-y-auto custom-scrollbar" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center p-4 border-b border-neutral-700">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <Keyboard size={20} className="text-green-500" />
+            Настройка горячих клавиш
+          </h2>
+          <button onClick={onClose} className="text-neutral-400 hover:text-white p-1">
+            <X size={20} />
+          </button>
+        </div>
+        
+        <div className="p-4 space-y-3">
+          {Object.entries(hotkeyLabels).map(([action, label]) => (
+            <div key={action} className="flex justify-between items-center py-2 border-b border-neutral-700">
+              <span className="text-neutral-300">{label}</span>
+              {editingKey === action ? (
+                <input
+                  autoFocus
+                  className="bg-neutral-700 text-white px-2 py-1 rounded text-xs font-mono border border-blue-500 outline-none"
+                  value={tempKey}
+                  readOnly
+                  onKeyDown={(e) => handleKeyDown(e, action)}
+                />
+              ) : (
+                <button
+                  onClick={() => { setEditingKey(action); setTempKey(''); }}
+                  className="bg-neutral-700 hover:bg-neutral-600 px-2 py-1 rounded text-xs text-white font-mono"
+                >
+                  {formatKeyCombo(hotkeys[action])}
+                </button>
+              )}
+            </div>
+          ))}
+          
+          <div className="pt-4 flex gap-2">
+            <button
+              onClick={resetToDefaults}
+              className="flex-1 py-2 bg-neutral-700 hover:bg-neutral-600 rounded text-neutral-300 text-sm flex items-center justify-center gap-2"
+            >
+              <RotateCcw size={14} /> Сбросить
+            </button>
+            <button
+              onClick={onClose}
+              className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white text-sm flex items-center justify-center gap-2"
+            >
+              <Check size={14} /> Готово
+            </button>
+          </div>
+          
+          <p className="text-xs text-neutral-500 text-center">
+            Нажмите на комбинацию чтобы изменить. Нажмите Escape для отмены.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // --- Хелперы для цветов ---
 const rgbToHex = (r, g, b, a = 255) => {
@@ -116,6 +238,24 @@ export default function App() {
   const [rotationAngle, setRotationAngle] = useState(0);
   const [showHotkeys, setShowHotkeys] = useState(false);
 
+  // --- Горячие клавиши (с настройкой пользователя) ---
+  const defaultHotkeys = {
+    undo: 'ctrl+z',
+    redo: 'ctrl+y',
+    pencil: '1',
+    picker: '2',
+    eraser: '3',
+    replace: '4',
+    marquee: 'm',
+    pan: 'h',
+    escape: 'escape'
+  };
+
+  const [hotkeys, setHotkeys] = useState(() => {
+    const saved = localStorage.getItem('mc-editor-hotkeys');
+    return saved ? JSON.parse(saved) : defaultHotkeys;
+  });
+
   // --- Вычисляемые свойства ---
   const activeLayerIndex = layers.findIndex(l => l.id === activeLayerId);
   const activeLayer = layers[activeLayerIndex];
@@ -173,20 +313,45 @@ export default function App() {
       return () => document.removeEventListener('fullscreenchange', handleFsChange);
   }, []);
 
+  // --- Сохранение горячих клавиш в localStorage ---
+  useEffect(() => {
+    localStorage.setItem('mc-editor-hotkeys', JSON.stringify(hotkeys));
+  }, [hotkeys]);
+
+  // --- Проверка соответствия клавиши ---
+  const isKeyMatch = (e, keyCombo) => {
+    const key = e.key.toLowerCase();
+    const ctrl = e.ctrlKey || e.metaKey;
+    const shift = e.shiftKey;
+    const alt = e.altKey;
+    
+    const parts = keyCombo.toLowerCase().split('+');
+    const needCtrl = parts.includes('ctrl');
+    const needShift = parts.includes('shift');
+    const needAlt = parts.includes('alt');
+    const needKey = parts[parts.length - 1];
+    
+    if (needCtrl !== ctrl) return false;
+    if (needShift !== shift) return false;
+    if (needAlt !== alt) return false;
+    
+    return key === needKey;
+  };
+
   // --- Горячие клавиши ---
   useEffect(() => {
     function handleKeyDown(e) {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-      const key = e.key.toLowerCase();
-      if (key === '1') { setTool('pencil'); setIsShadingMode(false); setIsLightenMode(false); }
-      if (key === '2') { setTool('picker'); }
-      if (key === '3') { setTool('eraser'); setIsShadingMode(false); setIsLightenMode(false); }
-      if (key === 'm') { setTool('marquee'); }
-      if (key === 'h') { setTool('pan'); }
-      if (key === 'z') { handleUndo(); }
-      if (key === 'x') { handleRedo(); }
-      if (key === 'escape') { setSelection(null); }
+      // Проверка горячих клавиш
+      if (isKeyMatch(e, hotkeys.undo)) { e.preventDefault(); handleUndo(); return; }
+      if (isKeyMatch(e, hotkeys.redo)) { e.preventDefault(); handleRedo(); return; }
+      if (isKeyMatch(e, hotkeys.pencil)) { setTool('pencil'); setIsShadingMode(false); setIsLightenMode(false); return; }
+      if (isKeyMatch(e, hotkeys.picker)) { setTool('picker'); return; }
+      if (isKeyMatch(e, hotkeys.eraser)) { setTool('eraser'); setIsShadingMode(false); setIsLightenMode(false); return; }
+      if (isKeyMatch(e, hotkeys.marquee)) { setTool('marquee'); return; }
+      if (isKeyMatch(e, hotkeys.pan)) { setTool('pan'); return; }
+      if (isKeyMatch(e, hotkeys.escape)) { setSelection(null); return; }
 
       // Перемещение слоя стрелочками
       if (e.key === 'ArrowUp') {
@@ -206,7 +371,7 @@ export default function App() {
           shiftLayerByOne(1, 0);
       }
 
-      if (key === 'f11' || (e.altKey && key === 'enter')) {
+      if (e.key === 'F11' || (e.altKey && e.key === 'Enter')) {
           e.preventDefault();
           toggleFullScreen();
       }
@@ -228,7 +393,7 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     return () => { window.removeEventListener('keydown', handleKeyDown); window.removeEventListener('keyup', handleKeyUp); };
-  }, [layers, history, redoHistory, activeLayerId, handleUndo, handleRedo]);
+  }, [layers, history, redoHistory, activeLayerId, handleUndo, handleRedo, hotkeys]);
 
   // --- Колесико мыши (Зум) ---
   const handleWheelCanvas = (e) => {
@@ -1428,73 +1593,7 @@ export default function App() {
 
       {/* Модальное окно с горячими клавишами */}
       {showHotkeys && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowHotkeys(false)}>
-          <div className="bg-neutral-800 rounded-xl border border-neutral-700 shadow-2xl max-w-md w-full max-h-[80vh] overflow-y-auto custom-scrollbar" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center p-4 border-b border-neutral-700">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Keyboard size={20} className="text-green-500" />
-                Горячие клавиши
-              </h2>
-              <button onClick={() => setShowHotkeys(false)} className="text-neutral-400 hover:text-white p-1">
-                <X size={20} />
-              </button>
-            </div>
-            <div className="p-4 space-y-3">
-              <div className="flex justify-between items-center py-2 border-b border-neutral-700">
-                <span className="text-neutral-300">Карандаш</span>
-                <kbd className="bg-neutral-700 px-2 py-1 rounded text-xs text-white font-mono">1</kbd>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-neutral-700">
-                <span className="text-neutral-300">Пипетка</span>
-                <kbd className="bg-neutral-700 px-2 py-1 rounded text-xs text-white font-mono">2</kbd>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-neutral-700">
-                <span className="text-neutral-300">Ластик</span>
-                <kbd className="bg-neutral-700 px-2 py-1 rounded text-xs text-white font-mono">3</kbd>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-neutral-700">
-                <span className="text-neutral-300">Выделение</span>
-                <kbd className="bg-neutral-700 px-2 py-1 rounded text-xs text-white font-mono">M</kbd>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-neutral-700">
-                <span className="text-neutral-300">Панорамирование</span>
-                <kbd className="bg-neutral-700 px-2 py-1 rounded text-xs text-white font-mono">H</kbd>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-neutral-700">
-                <span className="text-neutral-300">Перемещение слоя</span>
-                <kbd className="bg-neutral-700 px-2 py-1 rounded text-xs text-white font-mono">↑↓←→</kbd>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-neutral-700">
-                <span className="text-neutral-300">Отменить (Undo)</span>
-                <kbd className="bg-neutral-700 px-2 py-1 rounded text-xs text-white font-mono">Z</kbd>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-neutral-700">
-                <span className="text-neutral-300">Повторить (Redo)</span>
-                <kbd className="bg-neutral-700 px-2 py-1 rounded text-xs text-white font-mono">X</kbd>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-neutral-700">
-                <span className="text-neutral-300">Снять выделение</span>
-                <kbd className="bg-neutral-700 px-2 py-1 rounded text-xs text-white font-mono">Esc</kbd>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-neutral-700">
-                <span className="text-neutral-300">Сетка</span>
-                <kbd className="bg-neutral-700 px-2 py-1 rounded text-xs text-white font-mono">G</kbd>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-neutral-700">
-                <span className="text-neutral-300">Индексы/Палитра</span>
-                <kbd className="bg-neutral-700 px-2 py-1 rounded text-xs text-white font-mono">H</kbd>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-neutral-700">
-                <span className="text-neutral-300">Полный экран</span>
-                <kbd className="bg-neutral-700 px-2 py-1 rounded text-xs text-white font-mono">F11</kbd>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="text-neutral-300">Полный экран (альт)</span>
-                <kbd className="bg-neutral-700 px-2 py-1 rounded text-xs text-white font-mono">Alt+Enter</kbd>
-              </div>
-            </div>
-          </div>
-        </div>
+        <HotkeysModal hotkeys={hotkeys} setHotkeys={setHotkeys} defaultHotkeys={defaultHotkeys} onClose={() => setShowHotkeys(false)} />
       )}
 
       <style>{`
