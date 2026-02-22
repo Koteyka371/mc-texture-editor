@@ -11,6 +11,7 @@ import {
 // Компонент модального окна настройки горячих клавиш
 function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
   const [editingKey, setEditingKey] = useState(null);
+  const inputRef = useRef(null);
 
   const hotkeyLabels = {
     undo: 'Отменить (Undo)',
@@ -23,8 +24,7 @@ function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
     escape: 'Снять выделение'
   };
 
-  const getKeyName = (e) => {
-    // Специальные клавиши
+  const getKeyName = (key) => {
     const specialKeys = {
       ' ': 'Space',
       'ArrowUp': '↑',
@@ -39,13 +39,9 @@ function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
       'Home': 'Home',
       'End': 'End',
       'PageUp': 'PageUp',
-      'PageDown': 'PageDown',
-      'F1': 'F1', 'F2': 'F2', 'F3': 'F3', 'F4': 'F4',
-      'F5': 'F5', 'F6': 'F6', 'F7': 'F7', 'F8': 'F8',
-      'F9': 'F9', 'F10': 'F10', 'F11': 'F11', 'F12': 'F12'
+      'PageDown': 'PageDown'
     };
-
-    return specialKeys[e.key] || e.key.toLowerCase();
+    return specialKeys[key] || key;
   };
 
   const handleKeyDown = (e, action) => {
@@ -68,7 +64,7 @@ function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
       return;
     }
 
-    const keyName = getKeyName(e);
+    const keyName = getKeyName(key);
     let combo = '';
     if (ctrl) combo += 'ctrl+';
     if (shift) combo += 'shift+';
@@ -100,7 +96,6 @@ function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
       if (part === 'shift') return 'Shift';
       if (part === 'alt') return 'Alt';
       const key = part.toUpperCase();
-      // Красивое отображение стрелок
       if (key === 'ARROWUP') return '↑';
       if (key === 'ARROWDOWN') return '↓';
       if (key === 'ARROWLEFT') return '←';
@@ -109,7 +104,13 @@ function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
     }).join(' + ');
   };
 
-  // Предотвращаем закрытие модалки при клике внутри
+  // Автофокус на input при начале редактирования
+  useEffect(() => {
+    if (editingKey && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [editingKey]);
+
   const handleModalClick = (e) => {
     e.stopPropagation();
   };
@@ -135,14 +136,14 @@ function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
             <div key={action} className="flex justify-between items-center py-2 border-b border-neutral-700">
               <span className="text-neutral-300">{label}</span>
               {editingKey === action ? (
-                <div
-                  tabIndex={0}
+                <input
+                  ref={inputRef}
                   autoFocus
+                  readOnly
                   className="bg-neutral-700 text-white px-3 py-2 rounded text-xs font-mono border border-blue-500 outline-none cursor-pointer min-w-[140px] text-center"
+                  value="Нажми клавишу..."
                   onKeyDown={(e) => handleKeyDown(e, action)}
-                >
-                  Нажми клавишу...
-                </div>
+                />
               ) : (
                 <button
                   onClick={() => setEditingKey(action)}
