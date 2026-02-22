@@ -1148,7 +1148,7 @@ export default function App() {
             <ToolButton active={tool === 'replace'} onClick={() => { setTool('replace'); }} icon={<RefreshCw size={16} />} title="Замена цвета [4]" />
             <ToolButton active={tool === 'marquee'} onClick={() => { setTool('marquee'); }} icon={<BoxSelect size={16} />} title="Выделение [M]" />
             <ToolButton active={tool === 'pan'} onClick={() => { setTool('pan'); }} icon={<Hand size={16} />} title="Панорамирование [H]" />
-            <button onClick={() => setSelection(null)} className="p-1.5 rounded-lg flex items-center justify-center transition-all bg-red-900/30 text-red-400 hover:bg-red-900/50" title="Снять выделение [Esc]">
+            <button onClick={clearActiveLayer} className="p-1.5 rounded-lg flex items-center justify-center transition-all bg-red-900/30 text-red-400 hover:bg-red-900/50" title="Очистить слой">
                 <X size={16}/>
             </button>
           </div>
@@ -1404,7 +1404,7 @@ export default function App() {
             {!isPaletteMode && (
                 <div className="bg-neutral-800 p-3 rounded-xl border border-neutral-700 h-fit">
                     <div className="flex justify-between items-center mb-2">
-                        <h3 className="font-bold text-neutral-300 flex items-center gap-2 text-xs uppercase"><ImageIcon size={14} /> Референс</h3>
+                        <h3 className="font-bold text-neutral-300 flex items-center gap-2 text-xs uppercase"><ImageIcon size={14} /> Рефере��с</h3>
                         {referenceImage && <button onClick={() => setReferenceImage(null)} className="text-[10px] text-red-400">Удалить</button>}
                     </div>
                     {!referenceImage ? (
