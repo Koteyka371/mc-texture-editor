@@ -1196,8 +1196,8 @@ export default function App() {
       const deltaY = e.clientY - lastMousePos.current.y;
       lastMousePos.current = { x: e.clientX, y: e.clientY };
       
-      // Вращение: движение мыши по X вращает по Y, движение по Y вращает по X
-      // Увеличил чувствительность с 0.5 до 1.0
+      // Rotation: mouse X moves Y axis, mouse Y moves X axis
+      // Increased sensitivity from 0.5 to 1.0
       setCubeRotation(prev => ({
           x: prev.x - deltaY * 1.0,
           y: prev.y + deltaX * 1.0
@@ -1208,7 +1208,7 @@ export default function App() {
       setIsDraggingCube(false);
   }
 
-  // Рендеринг текстур на canvas
+  // Render textures on canvas
   useEffect(() => {
       if (cubeTextures.front) renderGridToCanvas(cubeTextures.front, frontCanvasRef);
       if (cubeTextures.back) renderGridToCanvas(cubeTextures.back, backCanvasRef);
@@ -2196,10 +2196,10 @@ function renderGridToCanvas(grid, canvasRef) {
     canvas.width = width * pixelSize;
     canvas.height = height * pixelSize;
     
-    // Очищаем canvas
+    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Рисуем каждый пиксель
+    // Draw each pixel
     for (let r = 0; r < height; r++) {
         for (let c = 0; c < width; c++) {
             const color = grid[r][c];
