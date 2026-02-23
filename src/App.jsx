@@ -179,7 +179,7 @@ function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
   );
 }
 
-// --- Хелперы для цветов ---
+// --- Color Helpers ---
 const rgbToHex = (r, g, b, a = 255) => {
   if (a === 0) return 'transparent';
   const toHex = (c) => {
@@ -230,7 +230,7 @@ const modifyColorBrightness = (hex, amount) => {
 };
 
 export default function App() {
-  // --- Основные состояния ---
+  // --- Main States ---
   const [canvasSize, setCanvasSize] = useState({ w: 16, h: 16 });
   const [inputSize, setInputSize] = useState({ w: 16, h: 16 });
   const [zoom, setZoom] = useState(20);
@@ -248,7 +248,7 @@ export default function App() {
   const [history, setHistory] = useState([]);
   const [redoHistory, setRedoHistory] = useState([]);
 
-  // --- Инструменты и настройки ---
+  // --- Tools and Settings ---
   const [selectedColor, setSelectedColor] = useState('#000000');
   const [opacity, setOpacity] = useState(100);
   const [tool, setTool] = useState('pencil');
@@ -261,32 +261,34 @@ export default function App() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
 
-  // --- Выделение ---
+  // --- Selection ---
   const [selection, setSelection] = useState(null);
   const [selectionStart, setSelectionStart] = useState(null);
 
-  // --- Панорамирование (Pan) ---
+  // --- Panning ---
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const isSpaceDown = useRef(false);
 
-  // --- Палитра и Индексы ---
+  // --- Palette and Indices ---
   const [isPaletteMode, setIsPaletteMode] = useState(false);
   const [paletteData, setPaletteData] = useState({ list: [], pixelMap: [] });
   const [savedPalettes, setSavedPalettes] = useState([]);
 
-  // --- Референс ---
+  // --- Reference ---
   const [referenceImage, setReferenceImage] = useState(null);
   const referenceCanvasRef = useRef(null);
 
-  // --- Анимация ---
+  // --- Animation ---
   const [animPlaying, setAnimPlaying] = useState(false);
   const [animFps, setAnimFps] = useState(5);
   const [currentFrame, setCurrentFrame] = useState(0);
 
-  // --- Поворот ---
+  // --- Rotation ---
   const [rotationAngle, setRotationAngle] = useState(0);
   const [showHotkeys, setShowHotkeys] = useState(false);
+  const [showImportExport, setShowImportExport] = useState(false);
+  const [importData, setImportData] = useState('');
 
   // --- Hotkeys (with user settings) ---
   const defaultHotkeys = {
@@ -306,17 +308,17 @@ export default function App() {
     return saved ? JSON.parse(saved) : defaultHotkeys;
   });
 
-  // --- Вычисляемые свойства ---
+  // --- Computed Properties ---
   const activeLayerIndex = layers.findIndex(l => l.id === activeLayerId);
   const activeLayer = layers[activeLayerIndex];
 
-  // Загрузка палитр при старте
+  // Load palettes on startup
   useEffect(() => {
       const saved = localStorage.getItem('mc_palettes');
       if (saved) setSavedPalettes(JSON.parse(saved));
   }, []);
 
-  // --- История ---
+  // --- History ---
   function pushToHistory() {
     setHistory(prev => [...prev.slice(-30), { layers: JSON.parse(JSON.stringify(layers)), size: { ...canvasSize }, selection }]);
     setRedoHistory([]);
@@ -342,7 +344,7 @@ export default function App() {
     setRedoHistory(p => p.slice(0, -1));
   }
 
-  // --- Полноэкранный режим ---
+  // --- Fullscreen Mode ---
   function toggleFullScreen() {
       if (!document.fullscreenElement) {
           document.documentElement.requestFullscreen().catch(err => {
@@ -363,12 +365,12 @@ export default function App() {
       return () => document.removeEventListener('fullscreenchange', handleFsChange);
   }, []);
 
-  // --- Сохранение горячих клавиш в localStorage ---
+  // --- Save Hotkeys to localStorage ---
   useEffect(() => {
     localStorage.setItem('mc-editor-hotkeys', JSON.stringify(hotkeys));
   }, [hotkeys]);
 
-  // --- Проверка соответствия клавиши ---
+  // --- Key Match Check ---
   const isKeyMatch = (e, keyCombo) => {
     const combo = keyCombo.toLowerCase();
     const parts = combo.split('+');
@@ -382,15 +384,15 @@ export default function App() {
     const shift = e.shiftKey;
     const alt = e.altKey;
     
-    // Проверка модификаторов
+    // Check modifiers
     if (needCtrl !== ctrl) return false;
     if (needShift !== shift) return false;
     if (needAlt !== alt) return false;
     
-    // Получаем имя клавиши
+    // Get key name
     let keyName = e.key.toLowerCase();
     
-    // Специальные случаи
+    // Special cases
     if (e.code === 'Space' && e.key === ' ') keyName = 'space';
     if (e.key === 'ArrowUp') keyName = 'arrowup';
     if (e.key === 'ArrowDown') keyName = 'arrowdown';
@@ -401,7 +403,7 @@ export default function App() {
     return keyName === needKey;
   };
 
-  // --- Проверка кнопок мыши ---
+  // --- Mouse Button Check ---
   const isMouseMatch = (e, keyCombo) => {
     const combo = keyCombo.toLowerCase();
     const parts = combo.split('+');
@@ -415,12 +417,12 @@ export default function App() {
     const shift = e.shiftKey;
     const alt = e.altKey;
     
-    // Проверка модификаторов
+    // Check modifiers
     if (needCtrl !== ctrl) return false;
     if (needShift !== shift) return false;
     if (needAlt !== alt) return false;
     
-    // Получаем кнопку мыши
+    // Get mouse button
     let mouseButton = '';
     if (e.button === 0) mouseButton = 'leftclick';
     if (e.button === 1) mouseButton = 'middleclick';
@@ -431,12 +433,12 @@ export default function App() {
     return mouseButton === needKey;
   };
 
-  // --- Горячие клавиши ---
+  // --- Hotkeys ---
   useEffect(() => {
     function handleKeyDown(e) {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-      // Проверка горячих клавиш
+      // Check hotkeys
       if (isKeyMatch(e, hotkeys.undo)) { e.preventDefault(); handleUndo(); return; }
       if (isKeyMatch(e, hotkeys.redo)) { e.preventDefault(); handleRedo(); return; }
       if (isKeyMatch(e, hotkeys.pencil)) { setTool('pencil'); setIsShadingMode(false); setIsLightenMode(false); return; }
@@ -446,7 +448,7 @@ export default function App() {
       if (isKeyMatch(e, hotkeys.pan)) { setTool('pan'); return; }
       if (isKeyMatch(e, hotkeys.escape)) { setSelection(null); return; }
 
-      // Перемещение слоя стрелочками
+      // Move layer with arrows
       if (e.key === 'ArrowUp') {
           e.preventDefault();
           shiftLayerByOne(0, -1);
@@ -487,7 +489,7 @@ export default function App() {
     function handleMouseDown(e) {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
         
-        // Проверка горячих клавиш мыши
+        // Check mouse hotkeys
         if (isMouseMatch(e, hotkeys.undo)) { e.preventDefault(); handleUndo(); return; }
         if (isMouseMatch(e, hotkeys.redo)) { e.preventDefault(); handleRedo(); return; }
         if (isMouseMatch(e, hotkeys.pencil)) { setTool('pencil'); setIsShadingMode(false); setIsLightenMode(false); return; }
@@ -507,7 +509,7 @@ export default function App() {
     };
   }, [layers, history, redoHistory, activeLayerId, handleUndo, handleRedo, hotkeys]);
 
-  // --- Колесико мыши (Зум) ---
+  // --- Mouse Wheel (Zoom) ---
   const handleWheelCanvas = (e) => {
       if (isSpaceDown.current) {
           if (e.deltaY < 0) {
@@ -518,7 +520,7 @@ export default function App() {
       }
   };
 
-  // --- Получение текущего цвета с учетом Alpha ---
+  // --- Get Current Color with Alpha ---
   function getCurrentColorHex() {
      if (tool === 'eraser') return 'transparent';
      const base = selectedColor.substring(0, 7);
@@ -529,10 +531,10 @@ export default function App() {
      return base;
   }
 
-  // --- Системная Пипетка ---
+  // --- System Eyedropper ---
   async function useGlobalEyedropper() {
       if (!window.EyeDropper) {
-          alert("Ваш браузер не поддерживает системную пипетку. Используйте Chrome или Edge.");
+          alert("Your browser does not support the system eyedropper. Use Chrome or Edge.");
           return;
       }
       try {
@@ -541,11 +543,11 @@ export default function App() {
           setSelectedColor(result.sRGBHex);
           setTool('pencil');
       } catch (e) {
-          // Пользователь отменил выбор
+          // User canceled selection
       }
   }
 
-  // --- Логика Палитры ---
+  // --- Palette Logic ---
   function generatePaletteData(overrideGrid = null) {
     if (!activeLayer && !overrideGrid) return;
     const grid = overrideGrid || activeLayer.grid;
@@ -591,7 +593,7 @@ export default function App() {
       setLayers(newLayers);
   }
 
-  // --- Управление слоями ---
+  // --- Layer Management ---
   function addLayer(name = null, gridData = null) {
     pushToHistory();
     const newGrid = gridData || createEmptyGrid(canvasSize.w, canvasSize.h);
@@ -687,7 +689,7 @@ export default function App() {
       setLayers(newLayers);
   }
 
-  // --- Размер и Зум ---
+  // --- Size and Zoom ---
   function handleResizeCanvas() {
     const newW = parseInt(inputSize.w) || 16;
     const newH = parseInt(inputSize.h) || 16;
@@ -750,7 +752,7 @@ export default function App() {
     setIsPaletteMode(false);
   }
 
-  // --- Рисование ---
+  // --- Drawing ---
   function getCompositeColor(r, c) {
      for (let i = layers.length - 1; i >= 0; i--) {
          const layer = layers[i];
@@ -777,7 +779,7 @@ export default function App() {
   function drawPixelWithSymmetry(startR, startC) {
       if (!activeLayer || !activeLayer.visible) return;
       let newColor = getCurrentColorHex();
-      // Плавное затемнение/осветление - шаг 10 вместо 25
+      // Smooth shading/lightening - step 10 instead of 25
       if (isShadingMode && tool === 'pencil') {
          const currentColor = activeLayer.grid[startR][startC];
          if (currentColor !== 'transparent') newColor = modifyColorBrightness(currentColor, -10);
@@ -936,7 +938,7 @@ export default function App() {
       setSelectedColor(e.target.value);
   }
 
-  // --- Трансформации ---
+  // --- Transformations ---
   function applyTransform(transformType) {
       if (!activeLayer) return;
       pushToHistory();
@@ -1020,10 +1022,10 @@ export default function App() {
       setLayers(newLayers);
   }
 
-  // --- Палитра: Сохранение и Индексы ---
+  // --- Palette: Save and Indices ---
   function saveCurrentPalette() {
-      if (paletteData.list.length === 0) { alert("Палитра пуста!"); return; }
-      const name = prompt("Введите имя для палитры:");
+      if (paletteData.list.length === 0) { alert("Palette is empty!"); return; }
+      const name = prompt("Enter palette name:");
       if (!name) return;
       const newPalettes = [...savedPalettes, { name: String(name), colors: paletteData.list.map(i => i.color) }];
       setSavedPalettes(newPalettes);
@@ -1038,7 +1040,7 @@ export default function App() {
       });
   }
 
-  // --- Анимация ---
+  // --- Animation ---
   useEffect(() => {
       let interval;
       if (animPlaying) {
@@ -1049,7 +1051,7 @@ export default function App() {
       return () => clearInterval(interval);
   }, [animPlaying, animFps, layers.length]);
 
-  // --- Загрузка / Экспорт ---
+  // --- Load / Export ---
   function handleTextureUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -1061,7 +1063,7 @@ export default function App() {
         let newH = canvasSize.h;
         let shouldResize = false;
         if (img.width !== canvasSize.w || img.height !== canvasSize.h) {
-           if (confirm(`Размер изображения (${img.width}x${img.height}) отличается от холста. Изменить холст?`)) {
+           if (confirm(`Image size (${img.width}x${img.height}) differs from canvas. Resize canvas?`)) {
                newW = img.width;
                newH = img.height;
                shouldResize = true;
@@ -1109,6 +1111,53 @@ export default function App() {
     };
     reader.readAsDataURL(file);
     e.target.value = '';
+  }
+
+  // --- Import/Export Data ---
+  function exportData() {
+      if (!activeLayer) return '';
+      const data = [];
+      for (let r = 0; r < canvasSize.h; r++) {
+          for (let c = 0; c < canvasSize.w; c++) {
+              const color = activeLayer.grid[r][c];
+              if (color !== 'transparent') {
+                  data.push(`${c},${r};${color}`);
+              }
+          }
+      }
+      return data.join(';');
+  }
+
+  function importDataToCanvas(dataString) {
+      if (!dataString.trim()) return;
+      pushToHistory();
+      const newGrid = createEmptyGrid(canvasSize.w, canvasSize.h);
+      
+      // Parse format: x,y;#HEX;x,y;#HEX;...
+      // First split by semicolon
+      const parts = dataString.split(';').filter(s => s.trim());
+      
+      for (let i = 0; i < parts.length - 1; i += 2) {
+          const coordPart = parts[i].trim();
+          const colorPart = parts[i + 1].trim();
+          
+          // Parse coordinates: x,y
+          const coords = coordPart.split(',');
+          if (coords.length >= 2) {
+              const x = parseInt(coords[0].trim());
+              const y = parseInt(coords[1].trim());
+              const color = colorPart;
+              
+              if (x >= 0 && x < canvasSize.w && y >= 0 && y < canvasSize.h) {
+                  if (/^#[0-9A-Fa-f]{6,9}$/.test(color)) {
+                      newGrid[y][x] = color;
+                  }
+              }
+          }
+      }
+
+      const newLayers = layers.map(l => l.id === activeLayerId ? { ...l, grid: newGrid } : l);
+      setLayers(newLayers);
   }
 
   function handleReferenceUpload(e) {
@@ -1176,7 +1225,7 @@ export default function App() {
     link.click();
   }
 
-  // --- Хелперы для затемнения/осветления ---
+  // --- Shade/Light Helpers ---
   function darkenColor(hex) {
       return modifyColorBrightness(hex, -10);
   }
@@ -1184,17 +1233,17 @@ export default function App() {
       return modifyColorBrightness(hex, 10);
   }
 
-  // --- Оптимизированный рендеринг через Canvas ---
+  // --- Optimized Canvas Rendering ---
   const canvasRef = useRef(null);
   const gridCanvasRef = useRef(null);
   const needsRedraw = useRef(false);
 
-  // Функция принудительной перерисовки
+  // Force redraw function
   const forceRedraw = useCallback(() => {
       needsRedraw.current = true;
   }, []);
 
-  // Отрисовка основного холста
+  // Main canvas rendering
   useEffect(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -1210,7 +1259,7 @@ export default function App() {
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Рисуем все видимые слои
+      // Draw all visible layers
       for (let i = layers.length - 1; i >= 0; i--) {
           const layer = layers[i];
           if (!layer.visible) continue;
@@ -1225,7 +1274,7 @@ export default function App() {
           }
       }
 
-      // Рисуем выделение
+      // Draw selection
       if (selection) {
           ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
           ctx.lineWidth = 2;
@@ -1240,7 +1289,7 @@ export default function App() {
       }
   }, [layers, canvasSize, zoom, selection]);
 
-  // Отрисовка сетки отдельно
+  // Grid rendering separately
   useEffect(() => {
       const canvas = gridCanvasRef.current;
       if (!canvas) return;
@@ -1268,7 +1317,7 @@ export default function App() {
           }
       }
 
-      // Рисуем индексы палитры
+      // Draw palette indices
       if (isPaletteMode && paletteData.pixelMap.length > 0) {
           ctx.font = `bold ${Math.max(8, zoom / 2.5)}px monospace`;
           ctx.textAlign = 'center';
@@ -1288,7 +1337,7 @@ export default function App() {
       }
   }, [canvasSize, zoom, showGrid, isPaletteMode, paletteData]);
 
-  // Обработка клика по canvas
+  // Handle canvas click
   const handleCanvasPointerDown = useCallback((e) => {
       if (tool === 'pan') {
           setIsPanning(true);
@@ -1299,8 +1348,8 @@ export default function App() {
       const container = e.currentTarget;
       if (!container) return;
       const rect = container.getBoundingClientRect();
-      // Координаты внутри элемента с учётом transform
-      // rect.left/top уже учитывают transform при getBoundingClientRect
+      // Coordinates inside element with transform
+      // rect.left/top already account for transform in getBoundingClientRect
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       const c = Math.floor(x / zoom);
@@ -1344,7 +1393,7 @@ export default function App() {
       const container = e.currentTarget;
       if (!container) return;
       const rect = container.getBoundingClientRect();
-      // Координаты внутри элемента с учётом transform
+      // Coordinates inside element with transform
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       const c = Math.floor(x / zoom);
@@ -1361,9 +1410,9 @@ export default function App() {
       }
   }, [isPanning, tool, panStart, isDrawing, zoom, selectionStart, drawPixelWithSymmetry]);
 
-  // Получение цвета под курсором для пипетки
+  // Get color under cursor for picker
   const getPixelColorAt = useCallback((clientX, clientY, containerRect) => {
-      // Координаты внутри элемента с учётом transform
+      // Coordinates inside element with transform
       const x = clientX - containerRect.left;
       const y = clientY - containerRect.top;
       const c = Math.floor(x / zoom);
@@ -1374,7 +1423,7 @@ export default function App() {
       return 'transparent';
   }, [zoom, canvasSize, layers]);
 
-  // Обработка клика для пипетки
+  // Handle click for picker
   const handlePickerClick = useCallback((e) => {
       if (tool !== 'picker') return;
       const container = e.currentTarget;
@@ -1545,10 +1594,13 @@ export default function App() {
                     <Download size={16} /> PNG
                 </button>
             </div>
+            <button onClick={() => { setImportData(exportData()); setShowImportExport(true); }} className="w-full py-2 bg-neutral-700 hover:bg-neutral-600 text-white font-bold rounded transition-colors text-sm flex items-center justify-center gap-2">
+                <Hash size={16} /> Import/Export Data
+            </button>
           </div>
         </div>
 
-        {/* ЦЕНТР: Холст */}
+        {/* CENTER: Canvas */}
         <div className="flex flex-col items-center gap-2 flex-1 h-full overflow-hidden">
 
           {/* Top panel above canvas */}
@@ -1564,7 +1616,7 @@ export default function App() {
              </div>
           </div>
 
-          {/* Область с холстом */}
+          {/* Canvas Area */}
           <div
              className="relative bg-neutral-900 rounded-lg border-4 border-neutral-700 shadow-2xl overflow-hidden flex-1 w-full flex items-center justify-center"
              onWheel={handleWheelCanvas}
@@ -1592,13 +1644,13 @@ export default function App() {
                onPointerUp={handleGlobalMouseUp}
                onClick={handlePickerClick}
              >
-                {/* Основной canvas с пикселями */}
+                {/* Main canvas with pixels */}
                 <canvas
                     ref={canvasRef}
                     className="absolute inset-0"
                     style={{ imageRendering: 'pixelated' }}
                 />
-                {/* Canvas для сетки и индексов */}
+                {/* Canvas for grid and indices */}
                 <canvas
                     ref={gridCanvasRef}
                     className="absolute inset-0 pointer-events-none"
@@ -1698,7 +1750,19 @@ export default function App() {
                             <div key={`color-${item.id}`} className="flex items-center gap-2 bg-neutral-900 p-1.5 rounded border border-neutral-700">
                                 <span className="font-bold text-neutral-400 w-4 text-center text-[10px]">{String(item.id)}</span>
                                 <input type="color" value={item.color.substring(0,7)} onChange={(e) => updatePaletteColor(item.id, e.target.value)} className="w-5 h-5 rounded cursor-pointer border-none p-0 bg-transparent" />
-                                <span className="flex-1 text-[10px] font-mono text-neutral-400 uppercase">{String(item.color)}</span>
+                                <input 
+                                    type="text" 
+                                    value={item.color.substring(0,7).toUpperCase()} 
+                                    onChange={(e) => {
+                                        let val = e.target.value;
+                                        // Add # if missing
+                                        if (!val.startsWith('#')) val = '#' + val;
+                                        if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) {
+                                            updatePaletteColor(item.id, val);
+                                        }
+                                    }}
+                                    className="flex-1 bg-neutral-800 border border-neutral-600 rounded px-1 py-0.5 text-[10px] font-mono text-neutral-200 focus:border-blue-500 outline-none uppercase w-16"
+                                />
                             </div>
                         ))}
                     </div>
@@ -1734,6 +1798,55 @@ export default function App() {
       {/* Hotkeys modal */}
       {showHotkeys && (
         <HotkeysModal hotkeys={hotkeys} setHotkeys={setHotkeys} defaultHotkeys={defaultHotkeys} onClose={() => setShowHotkeys(false)} />
+      )}
+
+      {/* Import/Export Data modal */}
+      {showImportExport && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowImportExport(false)}>
+          <div className="bg-neutral-800 rounded-xl border border-neutral-700 shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center p-4 border-b border-neutral-700">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <Hash size={20} className="text-blue-500" />
+                Import/Export Data
+              </h2>
+              <button onClick={() => setShowImportExport(false)} className="text-neutral-400 hover:text-white p-1">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-4 flex flex-col gap-3 flex-1 overflow-hidden">
+              <p className="text-xs text-neutral-400">
+                Format: <code className="bg-neutral-700 px-1 py-0.5 rounded">x,y;#HEX;x,y;#HEX;...</code>
+              </p>
+              <textarea
+                value={importData}
+                onChange={(e) => setImportData(e.target.value)}
+                className="flex-1 bg-neutral-900 border border-neutral-600 rounded p-2 text-xs font-mono text-neutral-200 focus:border-blue-500 outline-none resize-none min-h-[200px]"
+                placeholder="0,0;#FF0000;1,0;#00FF00;..."
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const data = exportData();
+                    setImportData(data);
+                  }}
+                  className="flex-1 py-2 bg-neutral-700 hover:bg-neutral-600 rounded text-white text-sm font-bold"
+                >
+                  Export from Canvas
+                </button>
+                <button
+                  onClick={() => {
+                    importDataToCanvas(importData);
+                    setShowImportExport(false);
+                  }}
+                  className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white text-sm font-bold"
+                >
+                  Import to Canvas
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       <style>{`
