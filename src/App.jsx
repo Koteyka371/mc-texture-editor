@@ -290,6 +290,27 @@ export default function App() {
   const [showImportExport, setShowImportExport] = useState(false);
   const [importData, setImportData] = useState('');
 
+  // --- 3D Cube ---
+  const [show3DCube, setShow3DCube] = useState(false);
+  const [cubeRotation, setCubeRotation] = useState({ x: -30, y: 45 });
+  const [isDraggingCube, setIsDraggingCube] = useState(false);
+  const [cubeTextures, setCubeTextures] = useState({
+    front: null,
+    back: null,
+    left: null,
+    right: null,
+    top: null,
+    bottom: null
+  });
+  const [selectedFace, setSelectedFace] = useState(null);
+  const [editingFace, setEditingFace] = useState(null);
+  const frontCanvasRef = useRef(null);
+  const backCanvasRef = useRef(null);
+  const leftCanvasRef = useRef(null);
+  const rightCanvasRef = useRef(null);
+  const topCanvasRef = useRef(null);
+  const bottomCanvasRef = useRef(null);
+
   // --- Hotkeys (with user settings) ---
   const defaultHotkeys = {
     undo: 'ctrl+z',
@@ -1160,6 +1181,92 @@ export default function App() {
       setLayers(newLayers);
   }
 
+  // --- 3D Cube Functions ---
+  const lastMousePos = useRef({ x: 0, y: 0 });
+
+  function handleCubeMouseDown(e) {
+      if (e.target.closest('.cube-face-btn')) return;
+      setIsDraggingCube(true);
+      lastMousePos.current = { x: e.clientX, y: e.clientY };
+  }
+
+  function handleCubeMouseMove(e) {
+      if (!isDraggingCube) return;
+      const deltaX = e.clientX - lastMousePos.current.x;
+      const deltaY = e.clientY - lastMousePos.current.y;
+      lastMousePos.current = { x: e.clientX, y: e.clientY };
+      
+      // Вращение: движение мыши по X вращает по Y, движение по Y вращает по X
+      // Увеличил чувствительность с 0.5 до 1.0
+      setCubeRotation(prev => ({
+          x: prev.x - deltaY * 1.0,
+          y: prev.y + deltaX * 1.0
+      }));
+  }
+
+  function handleCubeMouseUp() {
+      setIsDraggingCube(false);
+  }
+
+  // Рендеринг текстур на canvas
+  useEffect(() => {
+      if (cubeTextures.front) renderGridToCanvas(cubeTextures.front, frontCanvasRef);
+      if (cubeTextures.back) renderGridToCanvas(cubeTextures.back, backCanvasRef);
+      if (cubeTextures.left) renderGridToCanvas(cubeTextures.left, leftCanvasRef);
+      if (cubeTextures.right) renderGridToCanvas(cubeTextures.right, rightCanvasRef);
+      if (cubeTextures.top) renderGridToCanvas(cubeTextures.top, topCanvasRef);
+      if (cubeTextures.bottom) renderGridToCanvas(cubeTextures.bottom, bottomCanvasRef);
+  }, [cubeTextures]);
+
+  function handleFaceTextureUpload(face, e) {
+      e.stopPropagation();
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+              const canvas = document.createElement('canvas');
+              canvas.width = canvasSize.w;
+              canvas.height = canvasSize.h;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0, canvasSize.w, canvasSize.h);
+              const textureData = ctx.getImageData(0, 0, canvasSize.w, canvasSize.h).data;
+              const grid = [];
+              for (let r = 0; r < canvasSize.h; r++) {
+                  const row = [];
+                  for (let c = 0; c < canvasSize.w; c++) {
+                      const i = (r * canvasSize.w + c) * 4;
+                      row.push(rgbToHex(textureData[i], textureData[i+1], textureData[i+2], textureData[i+3]));
+                  }
+                  grid.push(row);
+              }
+              setCubeTextures(prev => ({ ...prev, [face]: grid }));
+          };
+          img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+  }
+
+  function openFaceEditor(face) {
+      setEditingFace(face);
+  }
+
+  function applyFaceToCanvas() {
+      if (!selectedFace || !cubeTextures[selectedFace]) return;
+      pushToHistory();
+      const newGrid = cubeTextures[selectedFace];
+      const newLayers = layers.map(l => l.id === activeLayerId ? { ...l, grid: newGrid } : l);
+      setLayers(newLayers);
+      setEditingFace(null);
+  }
+
+  function applyCanvasToFace() {
+      if (!selectedFace || !activeLayer) return;
+      setCubeTextures(prev => ({ ...prev, [selectedFace]: JSON.parse(JSON.stringify(activeLayer.grid)) }));
+  }
+
   function handleReferenceUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -1447,6 +1554,9 @@ export default function App() {
           <button onClick={() => setShowHotkeys(!showHotkeys)} className="p-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-neutral-400 hover:text-white transition-colors" title="Hotkeys">
              <Keyboard size={18} />
           </button>
+          <button onClick={() => setShow3DCube(!show3DCube)} className="p-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-neutral-400 hover:text-white transition-colors" title="3D Cube Preview">
+             <BoxSelect size={18} />
+          </button>
           <button onClick={toggleFullScreen} className="p-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-neutral-400 hover:text-white transition-colors" title="Fullscreen (F11 or Alt+Enter)">
              <Maximize2 size={18} />
           </button>
@@ -1529,19 +1639,19 @@ export default function App() {
           <div className="flex flex-col gap-2">
               <span className="text-[10px] text-neutral-400 font-bold uppercase">Layer Movement</span>
               <div className="flex justify-center gap-1">
-                  <button onClick={() => shiftLayerByOne(0, -1)} className="p-1.5 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-700 flex justify-center text-neutral-300" title="Up (↑)">
-                      <ChevronUp size={16}/>
+                  <button onClick={() => shiftLayerByOne(0, -1)} className="p-1 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-700 flex justify-center text-neutral-300" title="Up (↑)">
+                      <ChevronUp size={14}/>
                   </button>
               </div>
               <div className="flex justify-center gap-1">
-                  <button onClick={() => shiftLayerByOne(-1, 0)} className="p-1.5 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-700 flex justify-center text-neutral-300" title="Left (←)">
-                      <ChevronLeft size={16}/>
+                  <button onClick={() => shiftLayerByOne(-1, 0)} className="p-1 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-700 flex justify-center text-neutral-300" title="Left (←)">
+                      <ChevronLeft size={14}/>
                   </button>
-                  <button onClick={() => shiftLayerByOne(0, 1)} className="p-1.5 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-700 flex justify-center text-neutral-300" title="Down (↓)">
-                      <ChevronDown size={16}/>
+                  <button onClick={() => shiftLayerByOne(0, 1)} className="p-1 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-700 flex justify-center text-neutral-300" title="Down (↓)">
+                      <ChevronDown size={14}/>
                   </button>
-                  <button onClick={() => shiftLayerByOne(1, 0)} className="p-1.5 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-700 flex justify-center text-neutral-300" title="Right (→)">
-                      <ChevronRight size={16}/>
+                  <button onClick={() => shiftLayerByOne(1, 0)} className="p-1 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-700 flex justify-center text-neutral-300" title="Right (→)">
+                      <ChevronRight size={14}/>
                   </button>
               </div>
           </div>
@@ -1664,6 +1774,193 @@ export default function App() {
         {/* RIGHT COLUMN */}
         <div className="flex flex-col gap-3 w-full lg:w-72 shrink-0 overflow-y-auto custom-scrollbar" style={{maxHeight: 'calc(100vh - 100px)'}}>
 
+            {/* 3D Cube Preview */}
+            {show3DCube && (
+              <div className="bg-neutral-800 p-3 rounded-xl border border-purple-700/50 shadow-lg shadow-purple-900/20 flex flex-col gap-2">
+                <div className="flex justify-between items-center pb-2 border-b border-neutral-700">
+                  <h3 className="font-bold text-neutral-300 flex items-center gap-2 text-xs uppercase">
+                    <BoxSelect size={14} className="text-purple-500" /> 3D Cube
+                  </h3>
+                  <button onClick={() => setShow3DCube(false)} className="text-neutral-400 hover:text-white p-1">
+                    <X size={14} />
+                  </button>
+                </div>
+
+                {/* 3D Cube Container */}
+                <div 
+                  className="w-full h-48 flex items-center justify-center perspective-1000 cursor-grab active:cursor-grabbing"
+                  onMouseDown={handleCubeMouseDown}
+                  onMouseMove={handleCubeMouseMove}
+                  onMouseUp={handleCubeMouseUp}
+                  onMouseLeave={handleCubeMouseUp}
+                >
+                  <div 
+                    className="relative w-32 h-32"
+                    style={{
+                      transformStyle: 'preserve-3d',
+                      transform: `rotateX(${cubeRotation.x}deg) rotateY(${cubeRotation.y}deg)`
+                    }}
+                  >
+                    {/* Front Face */}
+                    <div 
+                      className="absolute w-32 h-32 border border-neutral-600 cube-face overflow-hidden"
+                      style={{
+                        transform: 'translateZ(64px)',
+                        backgroundColor: '#2d2d2d'
+                      }}
+                      onClick={() => setSelectedFace('front')}
+                    >
+                      <canvas ref={frontCanvasRef} className="absolute inset-0 w-full h-full" style={{imageRendering: 'pixelated'}}></canvas>
+                      <div className="cube-face-buttons">
+                        <label className="cube-face-btn bg-black/60 hover:bg-blue-600/80 text-white p-1 rounded cursor-pointer transition-opacity opacity-0 hover:opacity-100">
+                          <Upload size={12} />
+                          <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFaceTextureUpload('front', e)} />
+                        </label>
+                        <button className="cube-face-btn bg-black/60 hover:bg-green-600/80 text-white p-1 rounded transition-opacity opacity-0 hover:opacity-100" onClick={() => openFaceEditor('front')}>
+                          <Pencil size={12} />
+                        </button>
+                      </div>
+                      {selectedFace === 'front' && <div className="absolute inset-0 border-2 border-blue-500 pointer-events-none"></div>}
+                    </div>
+
+                    {/* Back Face */}
+                    <div 
+                      className="absolute w-32 h-32 border border-neutral-600 cube-face overflow-hidden"
+                      style={{
+                        transform: 'rotateY(180deg) translateZ(64px)',
+                        backgroundColor: '#3d3d3d'
+                      }}
+                      onClick={() => setSelectedFace('back')}
+                    >
+                      <canvas ref={backCanvasRef} className="absolute inset-0 w-full h-full" style={{imageRendering: 'pixelated'}}></canvas>
+                      <div className="cube-face-buttons">
+                        <label className="cube-face-btn bg-black/60 hover:bg-blue-600/80 text-white p-1 rounded cursor-pointer transition-opacity opacity-0 hover:opacity-100">
+                          <Upload size={12} />
+                          <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFaceTextureUpload('back', e)} />
+                        </label>
+                        <button className="cube-face-btn bg-black/60 hover:bg-green-600/80 text-white p-1 rounded transition-opacity opacity-0 hover:opacity-100" onClick={() => openFaceEditor('back')}>
+                          <Pencil size={12} />
+                        </button>
+                      </div>
+                      {selectedFace === 'back' && <div className="absolute inset-0 border-2 border-blue-500 pointer-events-none"></div>}
+                    </div>
+
+                    {/* Left Face */}
+                    <div 
+                      className="absolute w-32 h-32 border border-neutral-600 cube-face overflow-hidden"
+                      style={{
+                        transform: 'rotateY(-90deg) translateZ(64px)',
+                        backgroundColor: '#4d4d4d'
+                      }}
+                      onClick={() => setSelectedFace('left')}
+                    >
+                      <canvas ref={leftCanvasRef} className="absolute inset-0 w-full h-full" style={{imageRendering: 'pixelated'}}></canvas>
+                      <div className="cube-face-buttons">
+                        <label className="cube-face-btn bg-black/60 hover:bg-blue-600/80 text-white p-1 rounded cursor-pointer transition-opacity opacity-0 hover:opacity-100">
+                          <Upload size={12} />
+                          <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFaceTextureUpload('left', e)} />
+                        </label>
+                        <button className="cube-face-btn bg-black/60 hover:bg-green-600/80 text-white p-1 rounded transition-opacity opacity-0 hover:opacity-100" onClick={() => openFaceEditor('left')}>
+                          <Pencil size={12} />
+                        </button>
+                      </div>
+                      {selectedFace === 'left' && <div className="absolute inset-0 border-2 border-blue-500 pointer-events-none"></div>}
+                    </div>
+
+                    {/* Right Face */}
+                    <div 
+                      className="absolute w-32 h-32 border border-neutral-600 cube-face overflow-hidden"
+                      style={{
+                        transform: 'rotateY(90deg) translateZ(64px)',
+                        backgroundColor: '#5d5d5d'
+                      }}
+                      onClick={() => setSelectedFace('right')}
+                    >
+                      <canvas ref={rightCanvasRef} className="absolute inset-0 w-full h-full" style={{imageRendering: 'pixelated'}}></canvas>
+                      <div className="cube-face-buttons">
+                        <label className="cube-face-btn bg-black/60 hover:bg-blue-600/80 text-white p-1 rounded cursor-pointer transition-opacity opacity-0 hover:opacity-100">
+                          <Upload size={12} />
+                          <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFaceTextureUpload('right', e)} />
+                        </label>
+                        <button className="cube-face-btn bg-black/60 hover:bg-green-600/80 text-white p-1 rounded transition-opacity opacity-0 hover:opacity-100" onClick={() => openFaceEditor('right')}>
+                          <Pencil size={12} />
+                        </button>
+                      </div>
+                      {selectedFace === 'right' && <div className="absolute inset-0 border-2 border-blue-500 pointer-events-none"></div>}
+                    </div>
+
+                    {/* Top Face */}
+                    <div 
+                      className="absolute w-32 h-32 border border-neutral-600 cube-face overflow-hidden"
+                      style={{
+                        transform: 'rotateX(90deg) translateZ(64px)',
+                        backgroundColor: '#6d6d6d'
+                      }}
+                      onClick={() => setSelectedFace('top')}
+                    >
+                      <canvas ref={topCanvasRef} className="absolute inset-0 w-full h-full" style={{imageRendering: 'pixelated'}}></canvas>
+                      <div className="cube-face-buttons">
+                        <label className="cube-face-btn bg-black/60 hover:bg-blue-600/80 text-white p-1 rounded cursor-pointer transition-opacity opacity-0 hover:opacity-100">
+                          <Upload size={12} />
+                          <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFaceTextureUpload('top', e)} />
+                        </label>
+                        <button className="cube-face-btn bg-black/60 hover:bg-green-600/80 text-white p-1 rounded transition-opacity opacity-0 hover:opacity-100" onClick={() => openFaceEditor('top')}>
+                          <Pencil size={12} />
+                        </button>
+                      </div>
+                      {selectedFace === 'top' && <div className="absolute inset-0 border-2 border-blue-500 pointer-events-none"></div>}
+                    </div>
+
+                    {/* Bottom Face */}
+                    <div 
+                      className="absolute w-32 h-32 border border-neutral-600 cube-face overflow-hidden"
+                      style={{
+                        transform: 'rotateX(-90deg) translateZ(64px)',
+                        backgroundColor: '#7d7d7d'
+                      }}
+                      onClick={() => setSelectedFace('bottom')}
+                    >
+                      <canvas ref={bottomCanvasRef} className="absolute inset-0 w-full h-full" style={{imageRendering: 'pixelated'}}></canvas>
+                      <div className="cube-face-buttons">
+                        <label className="cube-face-btn bg-black/60 hover:bg-blue-600/80 text-white p-1 rounded cursor-pointer transition-opacity opacity-0 hover:opacity-100">
+                          <Upload size={12} />
+                          <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFaceTextureUpload('bottom', e)} />
+                        </label>
+                        <button className="cube-face-btn bg-black/60 hover:bg-green-600/80 text-white p-1 rounded transition-opacity opacity-0 hover:opacity-100" onClick={() => openFaceEditor('bottom')}>
+                          <Pencil size={12} />
+                        </button>
+                      </div>
+                      {selectedFace === 'bottom' && <div className="absolute inset-0 border-2 border-blue-500 pointer-events-none"></div>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Controls */}
+                <div className="flex flex-col gap-1 bg-neutral-900 p-2 rounded border border-neutral-700">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] text-neutral-400">Face: <strong className="text-white capitalize">{selectedFace || 'None'}</strong></span>
+                    <div className="flex gap-1">
+                      <button 
+                        onClick={applyFaceToCanvas} 
+                        disabled={!selectedFace || !cubeTextures[selectedFace]}
+                        className="px-2 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-neutral-700 disabled:text-neutral-500 text-white text-[9px] rounded font-bold"
+                      >
+                        To Canvas
+                      </button>
+                      <button 
+                        onClick={applyCanvasToFace}
+                        disabled={!selectedFace || !activeLayer}
+                        className="px-2 py-1 bg-green-600 hover:bg-green-700 disabled:bg-neutral-700 disabled:text-neutral-500 text-white text-[9px] rounded font-bold"
+                      >
+                        From Canvas
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-[9px] text-neutral-500">Drag to rotate • Click face</p>
+                </div>
+              </div>
+            )}
+
             {/* Animation */}
             <div className="bg-neutral-800 p-3 rounded-xl border border-neutral-700 flex flex-col gap-2">
                  <div className="flex justify-between items-center pb-2 border-b border-neutral-700">
@@ -1728,6 +2025,27 @@ export default function App() {
                 </div>
             </div>
 
+            {/* Reference */}
+            <div className="bg-neutral-800 p-3 rounded-xl border border-neutral-700 h-fit">
+                    <div className="flex justify-between items-center mb-2">
+                        <h3 className="font-bold text-neutral-300 flex items-center gap-2 text-xs uppercase"><ImageIcon size={14} /> Reference</h3>
+                        {referenceImage && <button onClick={() => setReferenceImage(null)} className="text-[10px] text-red-400">Delete</button>}
+                    </div>
+                    {!referenceImage ? (
+                        <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-neutral-600 rounded-lg cursor-pointer hover:bg-neutral-700/50 transition-colors">
+                            <Upload className="text-neutral-500 mb-1" size={16} />
+                            <span className="text-[10px] text-neutral-400 text-center px-2">Upload image</span>
+                            <input type="file" accept="image/*" className="hidden" onChange={handleReferenceUpload} />
+                        </label>
+                    ) : (
+                        <div className="flex flex-col gap-1">
+                            <div className="border border-neutral-600 rounded overflow-hidden bg-neutral-900 relative">
+                                <canvas ref={referenceCanvasRef} onClick={pickColorFromReference} className="cursor-crosshair w-full block" style={{ imageRendering: 'pixelated' }} />
+                            </div>
+                        </div>
+                    )}
+            </div>
+
             {/* PALETTE LIST */}
             {isPaletteMode && (
                 <div className="bg-neutral-800 p-3 rounded-xl border border-blue-700/50 shadow-lg shadow-blue-900/20 flex flex-col gap-2">
@@ -1750,9 +2068,9 @@ export default function App() {
                             <div key={`color-${item.id}`} className="flex items-center gap-2 bg-neutral-900 p-1.5 rounded border border-neutral-700">
                                 <span className="font-bold text-neutral-400 w-4 text-center text-[10px]">{String(item.id)}</span>
                                 <input type="color" value={item.color.substring(0,7)} onChange={(e) => updatePaletteColor(item.id, e.target.value)} className="w-5 h-5 rounded cursor-pointer border-none p-0 bg-transparent" />
-                                <input 
-                                    type="text" 
-                                    value={item.color.substring(0,7).toUpperCase()} 
+                                <input
+                                    type="text"
+                                    value={item.color.substring(0,7).toUpperCase()}
                                     onChange={(e) => {
                                         let val = e.target.value;
                                         // Add # if missing
@@ -1766,29 +2084,6 @@ export default function App() {
                             </div>
                         ))}
                     </div>
-                </div>
-            )}
-
-            {/* Reference */}
-            {!isPaletteMode && (
-                <div className="bg-neutral-800 p-3 rounded-xl border border-neutral-700 h-fit">
-                    <div className="flex justify-between items-center mb-2">
-                        <h3 className="font-bold text-neutral-300 flex items-center gap-2 text-xs uppercase"><ImageIcon size={14} /> Reference</h3>
-                        {referenceImage && <button onClick={() => setReferenceImage(null)} className="text-[10px] text-red-400">Delete</button>}
-                    </div>
-                    {!referenceImage ? (
-                        <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-neutral-600 rounded-lg cursor-pointer hover:bg-neutral-700/50 transition-colors">
-                            <Upload className="text-neutral-500 mb-1" size={16} />
-                            <span className="text-[10px] text-neutral-400 text-center px-2">Upload image</span>
-                            <input type="file" accept="image/*" className="hidden" onChange={handleReferenceUpload} />
-                        </label>
-                    ) : (
-                        <div className="flex flex-col gap-1">
-                            <div className="border border-neutral-600 rounded overflow-hidden bg-neutral-900 relative">
-                                <canvas ref={referenceCanvasRef} onClick={pickColorFromReference} className="cursor-crosshair w-full block" style={{ imageRendering: 'pixelated' }} />
-                            </div>
-                        </div>
-                    )}
                 </div>
             )}
         </div>
@@ -1857,9 +2152,63 @@ export default function App() {
         @keyframes dash {
           to { stroke-dashoffset: 1000; }
         }
+        
+        .perspective-1000 {
+          perspective: 1000px;
+        }
+        
+        .cube-face {
+          backface-visibility: visible;
+          transition: box-shadow 0.2s;
+        }
+        
+        .cube-face:hover {
+          box-shadow: 0 0 15px rgba(168, 85, 247, 0.5);
+        }
+        
+        .cube-face-buttons {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          display: flex;
+          gap: 4px;
+          z-index: 10;
+        }
+        
+        .cube-face:hover .cube-face-buttons .cube-face-btn {
+          opacity: 1 !important;
+        }
       `}</style>
     </div>
   );
+}
+
+// Helper function to render grid as canvas
+function renderGridToCanvas(grid, canvasRef) {
+    if (!grid || !canvasRef || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const width = grid[0].length;
+    const height = grid.length;
+    const pixelSize = 4;
+    
+    canvas.width = width * pixelSize;
+    canvas.height = height * pixelSize;
+    
+    // Очищаем canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Рисуем каждый пиксель
+    for (let r = 0; r < height; r++) {
+        for (let c = 0; c < width; c++) {
+            const color = grid[r][c];
+            if (color !== 'transparent') {
+                ctx.fillStyle = color;
+                ctx.fillRect(c * pixelSize, r * pixelSize, pixelSize, pixelSize);
+            }
+        }
+    }
 }
 
 function ToolButton({ active, onClick, icon, title }) {
