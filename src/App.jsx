@@ -8,8 +8,8 @@ import {
   Keyboard, RotateCcw, Check
 } from 'lucide-react';
 
-// Hotkeys modal component
-function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
+// Hotkeys modal component (optimized)
+const HotkeysModal = memo(function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
   const [editingKey, setEditingKey] = useState(null);
   const inputRef = useRef(null);
 
@@ -177,7 +177,7 @@ function HotkeysModal({ hotkeys, setHotkeys, defaultHotkeys, onClose }) {
       </div>
     </div>
   );
-}
+});
 
 // --- Color Helpers ---
 const rgbToHex = (r, g, b, a = 255) => {
@@ -329,9 +329,9 @@ export default function App() {
     return saved ? JSON.parse(saved) : defaultHotkeys;
   });
 
-  // --- Computed Properties ---
-  const activeLayerIndex = layers.findIndex(l => l.id === activeLayerId);
-  const activeLayer = layers[activeLayerIndex];
+  // --- Computed Properties (memoized) ---
+  const activeLayerIndex = useMemo(() => layers.findIndex(l => l.id === activeLayerId), [layers, activeLayerId]);
+  const activeLayer = useMemo(() => layers[activeLayerIndex], [layers, activeLayerIndex]);
 
   // Load palettes on startup
   useEffect(() => {
@@ -569,7 +569,7 @@ export default function App() {
   }
 
   // --- Palette Logic ---
-  function generatePaletteData(overrideGrid = null) {
+  const generatePaletteData = useCallback((overrideGrid = null) => {
     if (!activeLayer && !overrideGrid) return;
     const grid = overrideGrid || activeLayer.grid;
     const colorToId = new Map();
@@ -585,7 +585,7 @@ export default function App() {
         return colorToId.get(color);
     }));
     setPaletteData({ list, pixelMap });
-  }
+  }, [activeLayer]);
 
   function togglePaletteMode() {
       if (!isPaletteMode) {
@@ -2184,8 +2184,8 @@ export default function App() {
   );
 }
 
-// Helper function to render grid as canvas
-function renderGridToCanvas(grid, canvasRef) {
+// Helper function to render grid as canvas (optimized)
+const renderGridToCanvas = (grid, canvasRef) => {
     if (!grid || !canvasRef || !canvasRef.current) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -2209,9 +2209,9 @@ function renderGridToCanvas(grid, canvasRef) {
             }
         }
     }
-}
+};
 
-function ToolButton({ active, onClick, icon, title }) {
+const ToolButton = memo(function ToolButton({ active, onClick, icon, title }) {
   return (
     <button
       onClick={onClick} title={title}
@@ -2221,4 +2221,4 @@ function ToolButton({ active, onClick, icon, title }) {
       {icon}
     </button>
   );
-}
+});
